@@ -442,7 +442,8 @@ async function moManTruyen(url) {
     veDsChuong('');
     capNhatNutDocTiep();
     $('#manTruyen').classList.remove('hidden');
-    $('#mtDsChuong').scrollIntoView({ block: 'nearest' });
+    // mở ra phải thấy bìa và nút Đọc trước, không nhảy thẳng xuống danh sách
+    $('#manTruyen').querySelector('.sheet-body').scrollTop = 0;
   } catch (e) {
     nhac('Không mở được truyện này: ' + e.message
       + '\n\nCó thể thư mục chương đã bị xoá — thử tải lại truyện.');

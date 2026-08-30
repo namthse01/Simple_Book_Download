@@ -170,23 +170,27 @@
     </div>
   </header>
 
+  <!-- .sheet-body cuộn toàn chiều ngang để thanh cuộn bám mép cửa sổ,
+       phần nội dung giới hạn bề ngang nằm trong .sheet-inner -->
   <div class="sheet-body">
-    <div class="sheet-info">
-      <img id="mtBia" alt="" onerror="this.style.visibility='hidden'">
-      <div class="sheet-meta">
-        <h2 id="mtTen2"></h2>
-        <p id="mtTacGia" class="muted"></p>
-        <p id="mtSoChuong" class="count"></p>
-        <div class="row">
-          <button class="primary" id="mtDocTiep">Đọc tiếp</button>
-          <button class="ghost" id="mtDocDau">Đọc từ đầu</button>
+    <div class="sheet-inner">
+      <div class="sheet-info">
+        <img id="mtBia" alt="" onerror="this.style.visibility='hidden'">
+        <div class="sheet-meta">
+          <h2 id="mtTen2"></h2>
+          <p id="mtTacGia" class="muted"></p>
+          <p id="mtSoChuong" class="count"></p>
+          <div class="row">
+            <button class="primary" id="mtDocTiep">Đọc tiếp</button>
+            <button class="ghost" id="mtDocDau">Đọc từ đầu</button>
+          </div>
+          <p id="mtBao" class="muted"></p>
         </div>
-        <p id="mtBao" class="muted"></p>
       </div>
-    </div>
 
-    <input id="mtLoc" type="search" placeholder="Lọc chương — gõ số hoặc tên chương…">
-    <div id="mtDsChuong" class="chap-grid"></div>
+      <input id="mtLoc" type="search" placeholder="Lọc chương — gõ số hoặc tên chương…">
+      <div id="mtDsChuong" class="chap-grid"></div>
+    </div>
   </div>
 </div>
 
