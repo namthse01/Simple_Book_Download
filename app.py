@@ -11,7 +11,9 @@ import os
 import sys
 import threading
 import time
+import traceback
 import webbrowser
+from datetime import datetime
 from pathlib import Path
 
 APP_TEN = "DCR - DragonCloud_reading"
@@ -214,5 +216,41 @@ def main() -> int:
     return run_desktop(port)
 
 
+def _bao_loi_khoi_dong(exc: BaseException) -> None:
+    """Ghi loi ra file va bao bang hop thoai.
+
+    Khi bam shortcut, app chay bang pythonw.exe -> khong co cua so lenh, va
+    sys.stderr la None nen traceback bien mat. Neu khong lam gi thi app hong
+    se khong hien gi ca, khong biet duong ma sua.
+    """
+    noi_dung = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    tep = ROOT / "data" / "loi_khoi_dong.txt"
+    try:
+        tep.parent.mkdir(exist_ok=True)
+        with tep.open("a", encoding="utf-8") as f:
+            f.write(f"\n===== {datetime.now():%Y-%m-%d %H:%M:%S} =====\n{noi_dung}")
+    except Exception:
+        pass
+    if sys.stderr is not None:
+        traceback.print_exc()
+    else:
+        try:
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(
+                None,
+                f"{APP_TEN} không khởi động được.\n\n{type(exc).__name__}: {exc}\n\n"
+                f"Chi tiết đã ghi vào:\n{tep}",
+                APP_TEN, 0x10)
+        except Exception:
+            pass
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        ma_thoat = main()
+    except SystemExit:
+        raise
+    except BaseException as exc:                      # noqa: BLE001
+        _bao_loi_khoi_dong(exc)
+        ma_thoat = 1
+    raise SystemExit(ma_thoat)

@@ -6,9 +6,21 @@ Chạy hoàn toàn trên máy bạn, không gửi gì ra ngoài ngoài chính tr
 
 ---
 
-## Chạy
+## Cài đặt (chạy 1 lần)
 
-Bấm đúp **`ChayApp.bat`** → mở ra **cửa sổ app riêng**, không cần trình duyệt.
+Bấm đúp **`CaiDat.bat`**. Nó cài thư viện cần thiết rồi tạo shortcut
+**DCReading** ngoài Desktop và trong Menu Start.
+
+Từ đó về sau chỉ cần **nhảy đúp shortcut trên Desktop** — ra thẳng cửa sổ app,
+không cửa sổ đen, không phải đụng tới file `.bat` nào nữa.
+
+Shortcut trỏ vào `pythonw.exe` (bản Python không kèm cửa sổ lệnh). Vì vậy khi
+app lỗi thì không có chỗ nào hiện traceback — app sẽ tự ghi vào
+`data\loi_khoi_dong.txt` và bật một hộp thoại báo lỗi.
+
+---
+
+## Chạy
 
 Ba cách chạy:
 
