@@ -146,6 +146,34 @@
   </section>
 </main>
 
+<!-- ============ TRÌNH ĐỌC TRUYỆN ============ -->
+<div id="docTruyen" class="reader hidden">
+  <header class="reader-top">
+    <button class="ghost" id="rDong">← Thư viện</button>
+    <div class="reader-title">
+      <b id="rTenTruyen"></b>
+      <span id="rTenChuong"></span>
+    </div>
+    <div class="reader-tools">
+      <button class="ghost" id="rMucLuc">Mục lục</button>
+      <button class="ghost" id="rNho" title="Chữ nhỏ hơn">A−</button>
+      <button class="ghost" id="rTo" title="Chữ to hơn">A+</button>
+      <button class="ghost" id="rNen" title="Đổi nền đọc">Nền giấy</button>
+    </div>
+  </header>
+
+  <div class="reader-body">
+    <aside id="rDsChuong" class="reader-list hidden"></aside>
+    <article id="rNoiDung" class="reader-content"></article>
+  </div>
+
+  <footer class="reader-nav">
+    <button id="rTruoc">← Chương trước</button>
+    <span id="rViTri" class="muted"></span>
+    <button id="rSau">Chương sau →</button>
+  </footer>
+</div>
+
 <script src="app.js"></script>
 </body>
 </html>

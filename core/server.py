@@ -12,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
-from . import store
+from . import reader, store
 from .downloader import Manager
 from .net import Http
 from .sources import Registry
@@ -69,6 +69,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def fail(self, msg: str, code=400):
         self.json({"ok": False, "loi": msg}, code)
+
+    @staticmethod
+    def _entry(url: str) -> dict | None:
+        """Tim muc thu vien theo link truyen."""
+        return next((x for x in store.load_library() if x.get("url") == url), None)
 
     def body(self) -> dict:
         n = int(self.headers.get("Content-Length") or 0)
@@ -169,6 +174,27 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/library":
             return self.json({"ok": True, "thu_vien": store.load_library()})
 
+        if path == "/api/read/list":
+            entry = self._entry(q.get("url") or "")
+            if entry is None:
+                return self.fail("không có truyện này trong thư viện")
+            chapters = reader.list_chapters(entry.get("folder") or "")
+            if not chapters:
+                return self.fail("không tìm thấy file chương nào trong thư mục truyện")
+            return self.json({"ok": True, "truyen": {
+                "title": entry.get("title", ""), "author": entry.get("author", ""),
+                "cover": entry.get("cover", ""), "url": entry.get("url", ""),
+            }, "chuong": chapters})
+
+        if path == "/api/read/chapter":
+            entry = self._entry(q.get("url") or "")
+            if entry is None:
+                return self.fail("không có truyện này trong thư viện")
+            data = reader.read_chapter(entry.get("folder") or "", q.get("index") or 1)
+            if data is None:
+                return self.fail("chưa tải chương này về máy")
+            return self.json({"ok": True, "chuong": data})
+
         return self.fail("khong co API nay", 404)
 
     # ---------- API POST ----------
@@ -229,6 +255,9 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/library/remove":
             return self.json({"ok": True, "thu_vien": store.remove_library(data.get("url", ""))})
+
+        if path == "/api/library/delete":
+            return self.json(reader.delete_book(data.get("url", "")))
 
         if path == "/api/reload":
             reg = app.reload_http()

@@ -128,10 +128,17 @@ class BlhVipSource(Source):
     # ---------- noi dung chuong ----------
     def fetch_content(self, chapter: Chapter) -> str:
         soup = self.http.soup(chapter.url, referer=SITE)
-        body = soup.select_one("#chapter-content, .chapter-content, [class*='chapter-c']")
+        # Phai lay dung .s-content. Khong dung selector rong kieu [class*='chapter-c']:
+        # no khop ca khoi bao ngoai, keo theo link "Chuong truoc / Chuong tiep" va
+        # dong "tac gia - so chu - ngay dang" vao dau moi chuong.
+        body = (soup.select_one("#chapter-content .s-content")
+                or soup.select_one(".s-content")
+                or soup.select_one("#chapter-content")
+                or soup.select_one(".chapter-content"))
         if body is None:
             raise RuntimeError("Khong tim thay khung noi dung chuong.")
-        for el in body.select("script, style, ins, iframe, [class*='ads'], .ads"):
+        for el in body.select("script, style, ins, iframe, [class*='ads'], .ads,"
+                              " h1.chapter-title, p.info-detail, .chapter-nav"):
             el.decompose()
         # Chuong khoa se tra ve trang moi dang nhap/mua chuong: bao loi han thay vi
         # ghi mot chuong rong vao file ebook.
