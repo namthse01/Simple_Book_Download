@@ -45,7 +45,7 @@ APP: App | None = None
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "TaiTruyen"
+    server_version = "DCR"
     protocol_version = "HTTP/1.1"
 
     # ---------- tien ich ----------

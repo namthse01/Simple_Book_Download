@@ -1,4 +1,4 @@
-"""TaiTruyen - tai truyen chu ve may, xuat EPUB/TXT.
+"""DCR - DragonCloud_reading: tai truyen chu ve may, xuat EPUB/TXT.
 
 Chay khong tham so  -> mo cua so app rieng (dung WebView2 co san cua Windows).
 --web               -> mo giao dien bang trinh duyet thay vi cua so app.
@@ -7,11 +7,14 @@ Chay khong tham so  -> mo cua so app rieng (dung WebView2 co san cua Windows).
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import threading
 import time
 import webbrowser
 from pathlib import Path
+
+APP_TEN = "DCR - DragonCloud_reading"
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
@@ -42,6 +45,56 @@ def _net_dpi():
         pass
 
 
+def _bao_la_app_rieng():
+    """De thanh tac vu Windows dung icon cua app thay vi icon chung cua Python."""
+    try:
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            "DCR.DragonCloud.Reading")
+    except Exception:
+        pass
+
+
+def _gan_icon_cua_so():
+    """Gan icon cho cua so bang Win32.
+
+    pywebview co tham so icon nhung backend EdgeChromium (ban dung tren Windows)
+    khong doc tham so do, nen phai tu tim cua so cua tien trinh minh roi gui
+    WM_SETICON. Cua so duoc tao sau khi vong lap GUI chay nen phai cho mot chut.
+    """
+    ico = ROOT / "appicon.ico"
+    if not ico.is_file():
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+        user32 = ctypes.windll.user32
+        me = os.getpid()
+
+        @ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
+        def thu(hwnd, lparam):
+            pid = wintypes.DWORD()
+            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+            if pid.value == me and user32.IsWindowVisible(hwnd):
+                ctypes.cast(lparam, ctypes.POINTER(wintypes.HWND))[0] = hwnd
+            return True
+
+        IMAGE_ICON, LR_LOADFROMFILE, WM_SETICON = 1, 0x0010, 0x0080
+        for _ in range(40):                       # cho toi da ~6 giay
+            giu = wintypes.HWND(0)
+            user32.EnumWindows(thu, ctypes.byref(giu))
+            if giu.value:
+                for kich, loai in ((32, 1), (16, 0)):    # 1 = ICON_BIG, 0 = ICON_SMALL
+                    h = user32.LoadImageW(None, str(ico), IMAGE_ICON,
+                                          kich, kich, LR_LOADFROMFILE)
+                    if h:
+                        user32.SendMessageW(giu, WM_SETICON, loai, h)
+                return
+            time.sleep(0.15)
+    except Exception:
+        pass                                       # khong co icon cung khong sao
+
+
 def run_desktop(port: int) -> int:
     """Cua so app rieng: khong can mo trinh duyet, ton RAM it hon nhieu."""
     try:
@@ -59,13 +112,15 @@ def run_desktop(port: int) -> int:
     url = f"http://127.0.0.1:{httpd.server_address[1]}/"
 
     _net_dpi()
+    _bao_la_app_rieng()
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    print("TaiTruyen dang chay tai", url)
+    print(APP_TEN, "dang chay tai", url)
     print("Thu muc luu:", store.load_settings()["output_dir"])
     try:
-        webview.create_window("TaiTruyen", url, width=1180, height=820,
+        webview.create_window(APP_TEN, url, width=1180, height=820,
                               min_size=(880, 560))
-        webview.start()          # chan o day cho den khi dong cua so
+        # ham nay chay sau khi vong lap GUI khoi dong -> luc do moi co cua so
+        webview.start(_gan_icon_cua_so)          # chan cho den khi dong cua so
     finally:
         httpd.shutdown()
         httpd.server_close()
@@ -81,7 +136,7 @@ def run_web(port: int, open_browser: bool) -> int:
 
     url = f"http://127.0.0.1:{httpd.server_address[1]}/"
     print("=" * 58)
-    print("  TaiTruyen dang chay:", url)
+    print("  " + APP_TEN + " dang chay:", url)
     print("  Thu muc luu:", store.load_settings()["output_dir"])
     print("  Dong cua so nay (hoac Ctrl+C) de tat.")
     print("=" * 58)

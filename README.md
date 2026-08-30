@@ -1,4 +1,4 @@
-# TaiTruyen
+# DCR - DragonCloud_reading
 
 Tải truyện chữ về máy, xuất ra **EPUB** (đọc trên Kindle, Koreader, điện thoại) và **TXT**.
 
