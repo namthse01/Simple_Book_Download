@@ -77,12 +77,15 @@ class TenWebSource(Source):
 
 Có sẵn hai plugin:
 
-- **`truyenfull.py`** — họ web dùng layout TruyenFull, tự dò tên miền nào còn sống
-  trong danh sách mirror; nếu link bạn dán thuộc tên miền bị chặn, nó tự tìm lại
-  truyện đó trên mirror còn truy cập được.
-- **`generic.py`** — không cần plugin riêng: tự đoán khung nội dung theo mật độ chữ,
-  tự tìm khối danh sách chương theo tỷ lệ link chương trên tổng số link của khối,
-  và tự suy ra kiểu đánh số trang để đọc hết các trang danh sách.
+- **`generic.py`** — xương sống của app, không cần viết gì thêm: cứ dán link là chạy.
+  Tự đoán khung nội dung theo mật độ chữ, tự tìm khối danh sách chương theo tỷ lệ
+  link chương trên tổng số link của khối, và tự suy ra kiểu đánh số trang để đọc
+  hết các trang danh sách. Nó chỉ nhận link, không tìm theo tên được.
+- **`blhvip.py`** — ví dụ cho trường hợp `generic.py` bó tay: trang nạp danh sách
+  chương bằng JavaScript nên HTML ban đầu chỉ có đúng một link. Plugin gọi thẳng
+  API của trang. Xem file này làm mẫu khi cần viết plugin cho web tương tự.
+
+Dấu hiệu cần viết plugin riêng: dán link vào mà app báo chỉ thấy 0–1 chương.
 
 ---
 

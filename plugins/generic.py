@@ -21,7 +21,7 @@ DROP_IN_CONTENT = [
 
 class GenericSource(Source):
     id = "generic"
-    name = "Nguon chung (tu doan)"
+    name = "Nguồn chung (tự đoán)"
     domains = []            # rong = nhan moi URL khong khop plugin nao khac
     can_search = False
     priority = 999
