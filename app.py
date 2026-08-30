@@ -1,7 +1,8 @@
 """TaiTruyen - tai truyen chu ve may, xuat EPUB/TXT.
 
-Chay khong tham so  -> mo giao dien web tren trinh duyet.
-Chay voi --url      -> tai thang tren dong lenh, khong can giao dien.
+Chay khong tham so  -> mo cua so app rieng (dung WebView2 co san cua Windows).
+--web               -> mo giao dien bang trinh duyet thay vi cua so app.
+--url ...           -> tai thang tren dong lenh, khong can giao dien.
 """
 from __future__ import annotations
 
@@ -22,14 +23,59 @@ from core.server import serve                             # noqa: E402
 from core.sources import Registry                         # noqa: E402
 
 
-def run_gui(port: int, open_browser: bool):
-    for attempt in range(20):
+def _mo_server(port: int):
+    """Mo server o cong dau tien con trong, ke tu `port`."""
+    for buoc in range(20):
         try:
-            httpd = serve(port + attempt)
-            break
+            return serve(port + buoc)
         except OSError:
             continue
-    else:
+    return None
+
+
+def _net_dpi():
+    """Cho chu khong bi mo tren man hinh co ty le phong to (Windows)."""
+    try:
+        import ctypes
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+    except Exception:
+        pass
+
+
+def run_desktop(port: int) -> int:
+    """Cua so app rieng: khong can mo trinh duyet, ton RAM it hon nhieu."""
+    try:
+        import webview
+    except ImportError:
+        print("Chua cai pywebview nen khong mo duoc cua so app.")
+        print("  Cai bang:  python -m pip install pywebview")
+        print("  Hoac dung trinh duyet:  python app.py --web")
+        return 1
+
+    httpd = _mo_server(port)
+    if httpd is None:
+        print("Khong mo duoc cong nao trong khoang", port, "-", port + 19)
+        return 1
+    url = f"http://127.0.0.1:{httpd.server_address[1]}/"
+
+    _net_dpi()
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    print("TaiTruyen dang chay tai", url)
+    print("Thu muc luu:", store.load_settings()["output_dir"])
+    try:
+        webview.create_window("TaiTruyen", url, width=1180, height=820,
+                              min_size=(880, 560))
+        webview.start()          # chan o day cho den khi dong cua so
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+    return 0
+
+
+def run_web(port: int, open_browser: bool) -> int:
+    """Giao dien tren trinh duyet (nhu truoc)."""
+    httpd = _mo_server(port)
+    if httpd is None:
         print("Khong mo duoc cong nao trong khoang", port, "-", port + 19)
         return 1
 
@@ -94,17 +140,23 @@ def run_cli(args) -> int:
 
 def main() -> int:
     p = argparse.ArgumentParser(description="Tai truyen chu ve may")
-    p.add_argument("--url", help="link trang truyen (bo qua de mo giao dien web)")
+    p.add_argument("--url", help="link trang truyen (bo qua de mo giao dien)")
     p.add_argument("--tu", type=int, default=1, help="tai tu chuong so may")
     p.add_argument("--den", type=int, default=0, help="tai den chuong so may (0 = het)")
     p.add_argument("--dinh-dang", dest="dinh_dang", help="epub, txt hoac epub,txt")
-    p.add_argument("--port", type=int, default=0, help="cong cho giao dien web")
-    p.add_argument("--khong-mo-web", action="store_true", help="khong tu mo trinh duyet")
+    p.add_argument("--web", action="store_true",
+                   help="mo bang trinh duyet thay vi cua so app")
+    p.add_argument("--port", type=int, default=0, help="cong cho server noi bo")
+    p.add_argument("--khong-mo-web", action="store_true",
+                   help="chi chay server, khong tu mo gi ca")
     args = p.parse_args()
 
     if args.url:
         return run_cli(args)
-    return run_gui(args.port or store.load_settings()["port"], not args.khong_mo_web)
+    port = args.port or store.load_settings()["port"]
+    if args.web or args.khong_mo_web:
+        return run_web(port, not args.khong_mo_web)
+    return run_desktop(port)
 
 
 if __name__ == "__main__":

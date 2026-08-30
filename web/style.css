@@ -189,3 +189,11 @@ details summary{cursor:pointer;color:var(--muted);font-size:.85rem}
     box-shadow:4px 0 18px #0008}
   .reader-content{padding:1.2rem .9rem 3rem}
 }
+
+/* ---------- hộp thoại ---------- */
+.modal{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;
+  background:#000a;backdrop-filter:blur(3px);padding:1rem}
+.modal-box{background:var(--bg2);border:1px solid var(--line);border-radius:var(--radius);
+  padding:1.2rem;max-width:30rem;width:100%;box-shadow:0 12px 40px #000a}
+.modal-box p{margin:0 0 1.1rem;white-space:pre-wrap;line-height:1.6}
+.modal-acts{display:flex;gap:.6rem;justify-content:flex-end}

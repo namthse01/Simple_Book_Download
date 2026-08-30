@@ -22,6 +22,34 @@ function bao(msg, kind) {
   el.classList.toggle('hidden', !msg);
 }
 
+/* ================= hộp thoại =================
+   Tự vẽ thay vì dùng confirm()/alert() của trình duyệt: khi chạy trong cửa sổ
+   app (WebView2) các hộp thoại đó có thể bị chặn, bấm Xoá sẽ không hỏi gì. */
+let htTraLoi = null;
+
+function moHopThoai(noiDung, chiBao) {
+  $('#htNoiDung').textContent = noiDung;
+  $('#htHuy').classList.toggle('hidden', !!chiBao);
+  $('#htOk').textContent = chiBao ? 'Đóng' : 'Đồng ý';
+  $('#hopThoai').classList.remove('hidden');
+  $('#htOk').focus();
+  return new Promise((res) => { htTraLoi = res; });
+}
+
+function dongHopThoai(ok) {
+  $('#hopThoai').classList.add('hidden');
+  if (htTraLoi) { htTraLoi(ok); htTraLoi = null; }
+}
+
+const hoi = (t) => moHopThoai(t, false);      // hỏi Đồng ý / Huỷ
+const nhac = (t) => moHopThoai(t, true);      // chỉ báo một dòng
+
+$('#htOk').addEventListener('click', () => dongHopThoai(true));
+$('#htHuy').addEventListener('click', () => dongHopThoai(false));
+$('#hopThoai').addEventListener('click', (e) => {
+  if (e.target.id === 'hopThoai') dongHopThoai(false);
+});
+
 /* ================= tabs ================= */
 $$('.tab').forEach((b) => b.addEventListener('click', () => {
   $$('.tab').forEach((x) => x.classList.remove('on'));
@@ -263,7 +291,7 @@ $('#btLuu').addEventListener('click', async () => {
     const ok = $('#luuXong');
     ok.classList.remove('hidden');
     setTimeout(() => ok.classList.add('hidden'), 1800);
-  } catch (e) { alert('Không lưu được: ' + e.message); }
+  } catch (e) { nhac('Không lưu được: ' + e.message); }
 });
 
 $('#btNapLai').addEventListener('click', async () => {
@@ -277,15 +305,15 @@ napViec();
 
 /* ================= xoá truyện ================= */
 async function xoaTruyen(url, ten) {
-  const ok = confirm(`Xoá "${ten}" khỏi thư viện và xoá luôn thư mục file đã tải?\n\n`
+  const ok = await hoi(`Xoá "${ten}" khỏi thư viện và xoá luôn thư mục file đã tải?\n\n`
     + 'Không hoàn tác được — muốn đọc lại thì phải tải lại từ đầu.');
   if (!ok) return;
   try {
     const d = await api('/api/library/delete', { url });
-    if (d.loi) alert('Đã xoá khỏi thư viện, nhưng ' + d.loi);
+    if (d.loi) await nhac('Đã xoá khỏi thư viện, nhưng ' + d.loi);
     try { localStorage.removeItem('doc:' + url); } catch (e) { /* bỏ qua */ }
     napKho();
-  } catch (e) { alert('Không xoá được: ' + e.message); }
+  } catch (e) { nhac('Không xoá được: ' + e.message); }
 }
 
 /* ================= trình đọc ================= */
@@ -308,7 +336,7 @@ async function moDoc(url) {
     const vt = DOC.chuong.findIndex((c) => c.index === cu);
     await doChuong(vt >= 0 ? vt : 0);
   } catch (e) {
-    alert('Không mở được truyện này: ' + e.message
+    nhac('Không mở được truyện này: ' + e.message
       + '\n\nCó thể thư mục chương đã bị xoá — thử tải lại truyện.');
   }
 }

@@ -8,21 +8,28 @@ Chạy hoàn toàn trên máy bạn, không gửi gì ra ngoài ngoài chính tr
 
 ## Chạy
 
-Bấm đúp **`ChayApp.bat`** → trình duyệt tự mở giao diện.
+Bấm đúp **`ChayApp.bat`** → mở ra **cửa sổ app riêng**, không cần trình duyệt.
 
-Hoặc tải nhanh bằng dòng lệnh:
+Ba cách chạy:
 
-```bash
-python app.py --url "https://trang-truyen/ten-truyen/" --tu 1 --den 200 --dinh-dang epub,txt
-```
+| Lệnh | Kết quả |
+|---|---|
+| `python app.py` | Cửa sổ app riêng (mặc định) |
+| `python app.py --web` | Mở trong trình duyệt — hoặc bấm `ChayTrenTrinhDuyet.bat` |
+| `python app.py --url "..." --tu 1 --den 200` | Tải thẳng bằng dòng lệnh, không giao diện |
 
 Bấm đúp `TaiBangLink.bat` cũng được — nó hỏi link rồi tải luôn.
 
-Yêu cầu: Python 3.10+ và 3 gói `requests`, `beautifulsoup4`, `lxml`:
+Yêu cầu: Python 3.10+ và:
 
 ```bash
-python -m pip install requests beautifulsoup4 lxml
+python -m pip install requests beautifulsoup4 lxml pywebview
 ```
+
+`pywebview` chỉ cần cho cửa sổ app; thiếu nó thì vẫn chạy được bằng `--web`.
+Trên Windows nó dùng WebView2 có sẵn của hệ điều hành, tốn khoảng 450 MB RAM —
+nhẹ hơn nhiều so với việc mở Chrome (thường 3 GB trở lên), nhưng vẫn là
+Chromium nên đừng kỳ vọng xuống vài chục MB.
 
 ---
 
@@ -31,7 +38,12 @@ python -m pip install requests beautifulsoup4 lxml
 1. **Tìm truyện** — gõ tên truyện, hoặc **dán thẳng link trang truyện** rồi Enter.
 2. Bấm vào truyện → hiện bìa, tác giả, số chương.
 3. Chọn khoảng chương (hoặc *Toàn bộ* / *100 chương cuối*), tích EPUB/TXT → **Tải xuống**.
-4. Tab **Đang tải** xem tiến độ; tab **Thư viện** mở thư mục chứa file.
+4. Tab **Đang tải** xem tiến độ.
+5. Tab **Thư viện** — mỗi truyện có 3 nút:
+   - **Đọc** — đọc ngay trong app: có mục lục, chuyển chương bằng nút hoặc phím
+     ← →, chỉnh cỡ chữ, đổi nền giấy/tối, và nhớ chương đang đọc dở của từng truyện.
+   - **Thư mục** — mở thư mục chứa file EPUB/TXT.
+   - **Xoá** — xoá truyện khỏi thư viện và xoá cả thư mục file (có hỏi lại trước).
 
 Truyện lưu tại `Truyen\<Tên truyện>\`, kèm thư mục `chuong\` chứa từng chương dạng text.
 **Tải dở bị đứt thì chạy lại là tải tiếp** — chương nào đã có sẽ được bỏ qua.
