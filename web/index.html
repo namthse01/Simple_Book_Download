@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TaiTruyen</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <span class="logo">📚</span>
+    <div>
+      <h1>TaiTruyen</h1>
+      <p class="sub">Tải truyện chữ về máy · xuất EPUB &amp; TXT</p>
+    </div>
+  </div>
+  <nav class="tabs">
+    <button class="tab on" data-tab="tim">Tìm truyện</button>
+    <button class="tab" data-tab="tai">Đang tải <span id="soViec" class="pill hidden">0</span></button>
+    <button class="tab" data-tab="kho">Thư viện</button>
+    <button class="tab" data-tab="cai">Cài đặt</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ============ TÌM TRUYỆN ============ -->
+  <section id="tab-tim" class="panel on">
+    <div class="searchbar">
+      <input id="oTuKhoa" type="search" placeholder="Nhập tên truyện, hoặc dán thẳng link trang truyện rồi Enter…" autofocus>
+      <select id="oNguon"></select>
+      <button id="btTim" class="primary">Tìm</button>
+    </div>
+    <p class="hint">Dán link trang truyện của bất kỳ web nào — nếu chưa có plugin riêng, bộ dò tự động sẽ thử đọc cấu trúc trang.</p>
+
+    <div id="thongBao" class="notice hidden"></div>
+    <div id="ketQua" class="grid"></div>
+
+    <!-- chi tiết truyện -->
+    <div id="chiTiet" class="detail hidden">
+      <button class="close" id="btDong">✕</button>
+      <div class="detail-head">
+        <img id="dBia" alt="" onerror="this.style.visibility='hidden'">
+        <div class="detail-meta">
+          <h2 id="dTen"></h2>
+          <p id="dTacGia" class="muted"></p>
+          <p id="dTheLoai" class="chips"></p>
+          <p id="dTrangThai" class="muted"></p>
+          <p id="dSoChuong" class="count"></p>
+          <details id="dMoTaBox"><summary>Giới thiệu</summary><div id="dMoTa" class="desc"></div></details>
+        </div>
+      </div>
+
+      <div class="dl-form">
+        <div class="row">
+          <label>Từ chương <input id="oTu" type="number" min="1" value="1"></label>
+          <label>đến chương <input id="oDen" type="number" min="1"></label>
+          <button class="ghost" id="btTatCa">Toàn bộ</button>
+          <button class="ghost" id="btMoiNhat">100 chương cuối</button>
+        </div>
+        <div class="row">
+          <span class="lbl">Xuất ra:</span>
+          <label class="cb"><input type="checkbox" id="fEpub" checked> EPUB</label>
+          <label class="cb"><input type="checkbox" id="fTxt" checked> TXT</label>
+          <button id="btTai" class="primary big">Tải xuống</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ĐANG TẢI ============ -->
+  <section id="tab-tai" class="panel">
+    <div class="row spread">
+      <h2>Hàng đợi tải</h2>
+      <button class="ghost" id="btXoaXong">Xoá mục đã xong</button>
+    </div>
+    <div id="dsViec" class="jobs"></div>
+  </section>
+
+  <!-- ============ THƯ VIỆN ============ -->
+  <section id="tab-kho" class="panel">
+    <div class="row spread">
+      <h2>Truyện đã tải</h2>
+      <button class="ghost" id="btMoThuMuc">Mở thư mục lưu</button>
+    </div>
+    <div id="dsKho" class="grid"></div>
+  </section>
+
+  <!-- ============ CÀI ĐẶT ============ -->
+  <section id="tab-cai" class="panel">
+    <h2>Cài đặt</h2>
+    <div class="card">
+      <label class="field wide">Thư mục lưu truyện
+        <input id="sThuMuc" type="text">
+      </label>
+      <div class="fields">
+        <label class="field">Số luồng tải cùng lúc
+          <input id="sLuong" type="number" min="1" max="32">
+          <small>Cao quá dễ bị web chặn. 4–8 là hợp lý.</small>
+        </label>
+        <label class="field">Nghỉ giữa 2 lần gọi (giây)
+          <input id="sNghi" type="number" min="0" step="0.1">
+          <small>Tăng lên 1–2s nếu bị chặn.</small>
+        </label>
+        <label class="field">Số lần thử lại
+          <input id="sThuLai" type="number" min="0" max="10">
+        </label>
+        <label class="field">Tách tập mỗi N chương
+          <input id="sTach" type="number" min="0">
+          <small>0 = gộp thành một file duy nhất.</small>
+        </label>
+        <label class="field wide">Proxy (tuỳ chọn)
+          <input id="sProxy" type="text" placeholder="http://127.0.0.1:1080">
+          <small>Dùng khi nhà mạng chặn web nguồn.</small>
+        </label>
+      </div>
+      <label class="cb"><input type="checkbox" id="sTuLoc"> Tự phát hiện và xoá dòng rác lặp lại ở mọi chương</label>
+    </div>
+
+    <div class="card">
+      <h3>Bộ lọc chữ</h3>
+      <div class="fields">
+        <label class="field wide">Xoá các chuỗi này khỏi nội dung <small>mỗi dòng một chuỗi</small>
+          <textarea id="fRemove" rows="4"></textarea>
+        </label>
+        <label class="field wide">Xoá hẳn dòng khớp mẫu <small>regex, mỗi dòng một mẫu</small>
+          <textarea id="fDrop" rows="4"></textarea>
+        </label>
+        <label class="field wide">Đổi tên nhân vật <small>mỗi dòng dạng <code>tên cũ = tên mới</code></small>
+          <textarea id="fNames" rows="4"></textarea>
+        </label>
+      </div>
+    </div>
+
+    <div class="row">
+      <button id="btLuu" class="primary">Lưu cài đặt</button>
+      <button id="btNapLai" class="ghost">Nạp lại plugin</button>
+      <span id="luuXong" class="ok hidden">Đã lưu</span>
+    </div>
+
+    <div class="card">
+      <h3>Nguồn đang có</h3>
+      <div id="dsNguon" class="sources"></div>
+    </div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
