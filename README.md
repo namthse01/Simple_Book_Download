@@ -39,11 +39,16 @@ Chromium nên đừng kỳ vọng xuống vài chục MB.
 2. Bấm vào truyện → hiện bìa, tác giả, số chương.
 3. Chọn khoảng chương (hoặc *Toàn bộ* / *100 chương cuối*), tích EPUB/TXT → **Tải xuống**.
 4. Tab **Đang tải** xem tiến độ.
-5. Tab **Thư viện** — mỗi truyện có 3 nút:
-   - **Đọc** — đọc ngay trong app: có mục lục, chuyển chương bằng nút hoặc phím
-     ← →, chỉnh cỡ chữ, đổi nền giấy/tối, và nhớ chương đang đọc dở của từng truyện.
-   - **Thư mục** — mở thư mục chứa file EPUB/TXT.
-   - **Xoá** — xoá truyện khỏi thư viện và xoá cả thư mục file (có hỏi lại trước).
+5. Tab **Thư viện** — bấm vào truyện để mở **màn hình chọn chương**:
+   - Danh sách toàn bộ chương đã tải, có ô lọc (gõ số chương hoặc tên chương).
+   - **Đọc tiếp** quay lại đúng chương đang đọc dở, hoặc **Đọc từ đầu**.
+   - **Cập nhật chương mới** — đọc lại trang nguồn, chỉ tải phần chương mới rồi
+     đóng gói lại EPUB/TXT. Nếu danh sách chương ở nguồn đã bị đổi thứ tự so với
+     lúc tải, app báo để bạn tải lại thay vì ghép nhầm nội dung.
+   - **Thư mục** mở nơi chứa file, **Xoá** xoá cả truyện lẫn thư mục (có hỏi lại).
+
+   Trong trình đọc: mục lục, chuyển chương bằng nút hoặc phím ← →, chỉnh cỡ chữ,
+   đổi nền giấy/tối. App nhớ chương đang đọc dở của từng truyện.
 
 Truyện lưu tại `Truyen\<Tên truyện>\`, kèm thư mục `chuong\` chứa từng chương dạng text.
 **Tải dở bị đứt thì chạy lại là tải tiếp** — chương nào đã có sẽ được bỏ qua.

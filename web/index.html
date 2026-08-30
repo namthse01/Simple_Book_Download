@@ -158,6 +158,38 @@
   </div>
 </div>
 
+<!-- ============ MÀN HÌNH TRUYỆN (chọn chương) ============ -->
+<div id="manTruyen" class="sheet hidden">
+  <header class="sheet-top">
+    <button class="ghost" id="mtDong">← Thư viện</button>
+    <b id="mtTen" class="sheet-name"></b>
+    <div class="sheet-tools">
+      <button class="ghost" id="mtCapNhat">Cập nhật chương mới</button>
+      <button class="ghost" id="mtThuMuc">Thư mục</button>
+      <button class="ghost del" id="mtXoa">Xoá</button>
+    </div>
+  </header>
+
+  <div class="sheet-body">
+    <div class="sheet-info">
+      <img id="mtBia" alt="" onerror="this.style.visibility='hidden'">
+      <div class="sheet-meta">
+        <h2 id="mtTen2"></h2>
+        <p id="mtTacGia" class="muted"></p>
+        <p id="mtSoChuong" class="count"></p>
+        <div class="row">
+          <button class="primary" id="mtDocTiep">Đọc tiếp</button>
+          <button class="ghost" id="mtDocDau">Đọc từ đầu</button>
+        </div>
+        <p id="mtBao" class="muted"></p>
+      </div>
+    </div>
+
+    <input id="mtLoc" type="search" placeholder="Lọc chương — gõ số hoặc tên chương…">
+    <div id="mtDsChuong" class="chap-grid"></div>
+  </div>
+</div>
+
 <!-- ============ TRÌNH ĐỌC TRUYỆN ============ -->
 <div id="docTruyen" class="reader hidden">
   <header class="reader-top">

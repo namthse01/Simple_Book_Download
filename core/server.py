@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import mimetypes
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -259,12 +260,67 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/library/delete":
             return self.json(reader.delete_book(data.get("url", "")))
 
+        if path == "/api/library/update":
+            return self.cap_nhat_truyen(data.get("url", ""))
+
         if path == "/api/reload":
             reg = app.reload_http()
             return self.json({"ok": True, "nguon": [s.info() for s in reg.sources],
                               "loi": reg.errors})
 
         return self.fail("khong co API nay", 404)
+
+    # ---------- cap nhat chuong moi ----------
+    def cap_nhat_truyen(self, url: str):
+        """Doc lai trang nguon, xem co chuong nao moi hon phan da tai khong."""
+        app = APP
+        entry = self._entry(url)
+        if entry is None:
+            return self.fail("không có truyện này trong thư viện")
+        src = app.registry.for_url(url)
+        if src is None:
+            return self.fail("không có plugin nào xử lý được link này")
+
+        book = src.fetch_book(url)
+        if not book.chapters:
+            return self.fail("đọc lại trang nguồn nhưng không thấy chương nào")
+
+        da_co = reader.list_chapters(entry.get("folder") or "")
+        # Dung so thu tu lon nhat da tai, khong dung so luong file: neu lan truoc
+        # co chuong tai loi thi so file it hon so chuong thuc su.
+        moc = da_co[-1]["index"] if da_co else 0
+
+        # Neu danh sach chuong o nguon bi doi (chen them chuong o giua, doi thu
+        # tu) thi chuong da tai se khong con khop voi vi tri cu -> phai bao,
+        # vi luc do tai tiep se ghep nham noi dung.
+        canh_bao = ""
+        if 0 < moc <= len(book.chapters):
+            if not _cung_ten(da_co[-1]["title"], book.chapters[moc - 1].title):
+                canh_bao = ("Danh sách chương ở nguồn đã thay đổi so với lúc tải "
+                            "(chương số %d giờ là %r chứ không phải %r). Nên xoá "
+                            "truyện rồi tải lại để khỏi ghép nhầm nội dung."
+                            % (moc, book.chapters[moc - 1].title[:60],
+                               da_co[-1]["title"][:60]))
+
+        moi = len(book.chapters) - moc
+        ket = {"ok": True, "moi": max(0, moi), "tong": len(book.chapters),
+               "da_co": moc, "canh_bao": canh_bao}
+        if moi <= 0:
+            return self.json(ket)
+
+        # Giao ca danh sach: chuong nao da co file thi trinh tai tu bo qua,
+        # va buoc xuat file cuoi cung se dong lai EPUB/TXT gom du ca chuong moi.
+        with app.lock:
+            app.books[url] = (book, src)
+        job = app.manager.submit(src, book, book.chapters,
+                                 store.load_settings()["formats"])
+        ket["viec"] = job.to_dict()
+        return self.json(ket)
+
+
+def _cung_ten(a: str, b: str) -> bool:
+    chuan = lambda s: re.sub(r"\s+", " ", (s or "")).strip().lower()   # noqa: E731
+    return chuan(a) == chuan(b)
 
 
 def serve(port: int) -> ThreadingHTTPServer:

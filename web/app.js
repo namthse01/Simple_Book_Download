@@ -240,7 +240,8 @@ async function napKho() {
           <button class="del" data-xoa="${esc(b.url)}" data-ten="${esc(b.title)}">Xoá</button>
         </div>
       </div>`).join('') : '<div class="empty">Chưa tải truyện nào.</div>';
-    $$('#dsKho [data-doc]').forEach((c) => c.addEventListener('click', () => moDoc(c.dataset.doc)));
+    $$('#dsKho [data-doc]').forEach((c) => c.addEventListener('click',
+      () => moManTruyen(c.dataset.doc)));
     $$('#dsKho [data-mo]').forEach((c) => c.addEventListener('click', () =>
       api('/api/open', { duong_dan: c.dataset.mo }).catch(() => { })));
     $$('#dsKho [data-xoa]').forEach((c) => c.addEventListener('click',
@@ -322,7 +323,7 @@ const DOC = { url: '', ten: '', chuong: [], i: 0 };
 const nhoViTri = (url, idx) => { try { localStorage.setItem('doc:' + url, String(idx)); } catch (e) { /**/ } };
 const doiViTri = (url) => { try { return Number(localStorage.getItem('doc:' + url)) || 0; } catch (e) { return 0; } };
 
-async function moDoc(url) {
+async function moDoc(url, batDau) {
   try {
     const d = await api('/api/read/list?url=' + encodeURIComponent(url));
     DOC.url = url;
@@ -332,8 +333,8 @@ async function moDoc(url) {
     veMucLuc();
     kieuDoc();
     $('#docTruyen').classList.remove('hidden');
-    const cu = doiViTri(url);
-    const vt = DOC.chuong.findIndex((c) => c.index === cu);
+    const moc = batDau != null ? batDau : doiViTri(url);
+    const vt = DOC.chuong.findIndex((c) => c.index === moc);
     await doChuong(vt >= 0 ? vt : 0);
   } catch (e) {
     nhac('Không mở được truyện này: ' + e.message
@@ -417,4 +418,89 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowLeft') doChuong(DOC.i - 1);
   else if (e.key === 'ArrowRight') doChuong(DOC.i + 1);
   else if (e.key === 'Escape') $('#docTruyen').classList.add('hidden');
+});
+
+/* ================= màn hình truyện (chọn chương) ================= */
+const KHO = { url: '', ten: '', chuong: [], folder: '' };
+
+async function moManTruyen(url) {
+  const muc = (await api('/api/library')).thu_vien.find((x) => x.url === url);
+  KHO.url = url;
+  KHO.folder = muc ? muc.folder : '';
+  try {
+    const d = await api('/api/read/list?url=' + encodeURIComponent(url));
+    KHO.ten = d.truyen.title;
+    KHO.chuong = d.chuong;
+    $('#mtTen').textContent = d.truyen.title;
+    $('#mtTen2').textContent = d.truyen.title;
+    $('#mtTacGia').textContent = d.truyen.author ? 'Tác giả: ' + d.truyen.author : '';
+    $('#mtBia').src = d.truyen.cover || '';
+    $('#mtBia').style.visibility = d.truyen.cover ? 'visible' : 'hidden';
+    $('#mtSoChuong').textContent = d.chuong.length + ' chương đã tải về';
+    $('#mtBao').textContent = '';
+    $('#mtLoc').value = '';
+    veDsChuong('');
+    capNhatNutDocTiep();
+    $('#manTruyen').classList.remove('hidden');
+    $('#mtDsChuong').scrollIntoView({ block: 'nearest' });
+  } catch (e) {
+    nhac('Không mở được truyện này: ' + e.message
+      + '\n\nCó thể thư mục chương đã bị xoá — thử tải lại truyện.');
+  }
+}
+
+function capNhatNutDocTiep() {
+  const cu = doiViTri(KHO.url);
+  const c = KHO.chuong.find((x) => x.index === cu);
+  $('#mtDocTiep').textContent = c ? 'Đọc tiếp: ' + c.title : 'Bắt đầu đọc';
+}
+
+function veDsChuong(loc) {
+  const q = (loc || '').trim().toLowerCase();
+  const ds = q ? KHO.chuong.filter((c) =>
+    c.title.toLowerCase().includes(q) || String(c.index) === q) : KHO.chuong;
+  const dangDoc = doiViTri(KHO.url);
+  $('#mtDsChuong').innerHTML = ds.length
+    ? ds.map((c) => `<button data-ch="${c.index}"${c.index === dangDoc ? ' class="dangDoc"' : ''}
+        title="${esc(c.title)}">${esc(c.title)}</button>`).join('')
+    : '<div class="empty">Không có chương nào khớp.</div>';
+  $$('#mtDsChuong [data-ch]').forEach((b) => b.addEventListener('click',
+    () => moDoc(KHO.url, Number(b.dataset.ch))));
+}
+
+$('#mtLoc').addEventListener('input', () => veDsChuong($('#mtLoc').value));
+$('#mtDong').addEventListener('click', () => $('#manTruyen').classList.add('hidden'));
+$('#mtDocDau').addEventListener('click', () => {
+  if (KHO.chuong.length) moDoc(KHO.url, KHO.chuong[0].index);
+});
+$('#mtDocTiep').addEventListener('click', () => moDoc(KHO.url));
+$('#mtThuMuc').addEventListener('click', () =>
+  api('/api/open', { duong_dan: KHO.folder }).catch(() => { }));
+$('#mtXoa').addEventListener('click', async () => {
+  await xoaTruyen(KHO.url, KHO.ten);
+  if (!(await api('/api/library')).thu_vien.some((x) => x.url === KHO.url)) {
+    $('#manTruyen').classList.add('hidden');
+  }
+});
+
+$('#mtCapNhat').addEventListener('click', async () => {
+  const nut = $('#mtCapNhat');
+  nut.disabled = true;
+  $('#mtBao').textContent = 'Đang đọc lại trang nguồn để tìm chương mới… '
+    + '(truyện dài có thể mất một lúc)';
+  try {
+    const d = await api('/api/library/update', { url: KHO.url });
+    if (d.canh_bao) await nhac(d.canh_bao);
+    if (d.moi > 0) {
+      $('#mtBao').textContent = `Có ${d.moi} chương mới (nguồn đang có ${d.tong} chương). `
+        + 'Đang tải — xem tiến độ ở tab Đang tải. Tải xong thì đóng truyện này '
+        + 'rồi mở lại là thấy chương mới.';
+      napViec();
+    } else {
+      $('#mtBao').textContent = `Đã là mới nhất — nguồn cũng chỉ có ${d.tong} chương.`;
+    }
+  } catch (e) {
+    $('#mtBao').textContent = 'Không kiểm tra được: ' + e.message;
+  }
+  nut.disabled = false;
 });
