@@ -14,7 +14,7 @@
     <img class="logo" src="logo.png" alt="">
     <div>
       <h1>DCR — DragonCloud_reading</h1>
-      <p class="sub">Tải truyện chữ về máy · xuất EPUB &amp; TXT</p>
+      <p class="sub">Tải truyện chữ · nhập tài liệu · xuất EPUB &amp; TXT</p>
     </div>
   </div>
   <nav class="tabs">
@@ -83,8 +83,13 @@
   <section id="tab-kho" class="panel">
     <div class="row spread">
       <h2>Truyện đã tải</h2>
-      <button class="ghost" id="btMoThuMuc">Mở thư mục lưu</button>
+      <div class="row">
+        <button class="primary" id="btNhap">＋ Nhập tài liệu</button>
+        <button class="ghost" id="btMoThuMuc">Mở thư mục lưu</button>
+      </div>
     </div>
+    <p class="hint">Có sẵn tài liệu trên máy? Bấm <b>Nhập tài liệu</b> (hoặc kéo thả file vào cửa sổ này) — nhận EPUB, TXT, DOCX, PDF, HTML, Markdown; app tách chương rồi đưa vào thư viện như truyện tải về.</p>
+    <input id="oFileNhap" type="file" accept=".epub,.txt,.docx,.pdf,.html,.htm,.xhtml,.md,.markdown" multiple hidden>
     <div id="dsKho" class="grid"></div>
   </section>
 
@@ -154,6 +159,39 @@
     <div class="modal-acts">
       <button id="htHuy" class="ghost">Huỷ</button>
       <button id="htOk" class="primary">Đồng ý</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ NHẬP TÀI LIỆU ============ -->
+<div id="manNhap" class="modal hidden">
+  <div class="modal-box nhap-box">
+    <h3>Nhập tài liệu vào thư viện</h3>
+    <p class="nhap-hint">Nhận EPUB, TXT, DOCX, PDF, HTML, Markdown. EPUB giữ nguyên chương và bìa;
+DOCX/PDF/Markdown tách theo Heading, mục lục hoặc dòng «Chương N…»; không nhận ra thì tự chia phần.
+Bấm <b>Xem thử</b> để xem mục lục sẽ tách ra sao trước khi nhập.</p>
+    <div id="nhDs" class="nhap-ds"></div>
+    <div class="row">
+      <button class="ghost" id="nhThem">＋ Thêm file</button>
+    </div>
+    <label class="cb" id="nhGopKhung"><input type="checkbox" id="nhGop">
+      <span>Gộp tất cả thành <b>một cuốn</b> — mỗi file thành chương/phần, theo thứ tự đang xếp</span></label>
+    <div class="fields nhap-fields">
+      <label class="field">Tên sách <input id="nhTen" type="text" placeholder="để trống = lấy từ file"></label>
+      <label class="field">Tác giả <input id="nhTacGia" type="text" placeholder="để trống = lấy từ file"></label>
+    </div>
+    <div class="row">
+      <span class="lbl">Xuất ra:</span>
+      <label class="cb"><input type="checkbox" id="nhEpub" checked> EPUB</label>
+      <label class="cb"><input type="checkbox" id="nhTxt" checked> TXT</label>
+    </div>
+    <div id="nhThu" class="nhap-thu hidden"></div>
+    <p id="nhBao" class="nhap-bao"></p>
+    <div class="modal-acts">
+      <button id="nhXemThu" class="ghost">Xem thử tách chương</button>
+      <span class="spacer"></span>
+      <button id="nhHuy" class="ghost">Huỷ</button>
+      <button id="nhOk" class="primary">Nhập vào thư viện</button>
     </div>
   </div>
 </div>

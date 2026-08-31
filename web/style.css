@@ -197,6 +197,32 @@ details summary{cursor:pointer;color:var(--muted);font-size:.85rem}
   padding:1.2rem;max-width:30rem;width:100%;box-shadow:0 12px 40px #000a}
 .modal-box p{margin:0 0 1.1rem;white-space:pre-wrap;line-height:1.6}
 .modal-acts{display:flex;gap:.6rem;justify-content:flex-end}
+#hopThoai{z-index:90}   /* hộp nhắc phải nổi trên cả hộp nhập tài liệu */
+
+/* ---------- nhập tài liệu ---------- */
+.nhap-box{max-width:36rem;display:flex;flex-direction:column;gap:.8rem}
+.nhap-box h3{margin:0}
+.nhap-box p{margin:0}
+.nhap-hint{color:var(--muted);font-size:.86rem}
+.nhap-bao{color:var(--muted);font-size:.88rem;min-height:1.2em}
+.nhap-fields{grid-template-columns:1fr 1fr}
+.nhap-ds{display:flex;flex-direction:column;gap:.3rem;max-height:200px;overflow-y:auto}
+.nhap-ds .empty{padding:.9rem}
+.nhap-f{display:flex;align-items:center;gap:.5rem;background:var(--bg3);
+  border:1px solid var(--line);border-radius:8px;padding:.35rem .6rem}
+.nhap-f .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:.9rem}
+.nhap-f .s{color:var(--muted);font-size:.78rem;flex:none}
+.nhap-f button{padding:.1rem .45rem;font-size:.85rem;flex:none}
+.nhap-box .modal-acts{align-items:center}
+.nhap-box .modal-acts .spacer{flex:1}
+.nhap-thu{max-height:180px;overflow-y:auto;background:var(--bg3);border:1px solid var(--line);
+  border-radius:8px;padding:.6rem .8rem;font-size:.86rem}
+.thu-sach{margin-bottom:.5rem}
+.thu-sach .s{color:var(--muted)}
+.thu-sach ol{margin:.3rem 0 .3rem 1.4rem;padding:0;color:var(--muted)}
+.thu-sach li{margin:.1rem 0}
+.thu-loi{color:var(--err);margin-top:.4rem;white-space:pre-wrap}
 
 /* ---------- màn hình truyện (chọn chương) ---------- */
 .sheet{position:fixed;inset:0;z-index:45;display:flex;flex-direction:column;background:var(--bg)}

@@ -35,7 +35,7 @@ Bấm đúp `TaiBangLink.bat` cũng được — nó hỏi link rồi tải luô
 Yêu cầu: Python 3.10+ và:
 
 ```bash
-python -m pip install requests beautifulsoup4 lxml pywebview
+python -m pip install requests beautifulsoup4 lxml pywebview pymupdf
 ```
 
 `pywebview` chỉ cần cho cửa sổ app; thiếu nó thì vẫn chạy được bằng `--web`.
@@ -64,6 +64,35 @@ Chromium nên đừng kỳ vọng xuống vài chục MB.
 
 Truyện lưu tại `Truyen\<Tên truyện>\`, kèm thư mục `chuong\` chứa từng chương dạng text.
 **Tải dở bị đứt thì chạy lại là tải tiếp** — chương nào đã có sẽ được bỏ qua.
+
+---
+
+## Nhập tài liệu có sẵn trên máy
+
+Không cần nguồn web: có sẵn **EPUB, TXT, DOCX, PDF, HTML hay Markdown** thì đưa
+thẳng vào thư viện. Ở tab **Thư viện** bấm **＋ Nhập tài liệu** (hoặc kéo thả file
+vào cửa sổ app). Trước khi nhập có thể bấm **Xem thử tách chương** để xem mục lục
+sẽ ra sao. Sách nhập xong đọc trong app, lọc chữ, xuất lại EPUB/TXT y hệt truyện
+tải về.
+
+Cách tách chương của từng loại:
+
+- **EPUB** giữ nguyên chương theo mục lục, kèm bìa, tác giả, giới thiệu. EPUB dồn
+  cả sách vào một file duy nhất sẽ được tách lại theo tiêu đề h1/h2/h3.
+- **TXT** tách theo các dòng `Chương N…`, `Hồi N`, `Phần N`, `Chapter N`, `第N章`…
+  Tự đoán bảng mã (UTF-8, UTF-16, GB18030…).
+- **DOCX** tách theo Heading/Outline của Word. Nhiều cấp tiêu đề (Phần > Chương)
+  thì tách ở cấp có nhiều tiêu đề nhất, cấp trên thành tiền tố tên chương
+  (`Phần I · Chương 3`). Không dùng Heading thì dò `Chương N…` như TXT.
+- **PDF** tách theo mục lục (bookmark) của file; không có thì dò `Chương N…`.
+  Cần thư viện PyMuPDF (`CaiDat.bat` đã cài sẵn; thiếu thì
+  `python -m pip install pymupdf`). PDF ảnh scan không có chữ thì chịu (cần OCR).
+- **HTML** tách theo h1/h2/h3; **Markdown** theo `#`/`##`/`###`.
+- Không nhận ra chương nào thì tự chia mỗi phần vài trăm dòng.
+
+**Gộp nhiều file thành một cuốn** — sách bị xé lẻ thành `phan1.txt`, `phan2.txt`…
+thì chọn hết, tích *Gộp tất cả thành một cuốn*, sắp thứ tự bằng nút ↑ rồi nhập:
+mỗi file thành một (chùm) chương theo đúng thứ tự.
 
 ---
 
@@ -127,6 +156,7 @@ core/sources.py     lớp Source + bộ nạp plugin
 core/cleaner.py     HTML chương -> đoạn văn sạch, bộ lọc, dò dòng rác lặp lại
 core/downloader.py  hàng đợi, tải song song, tải tiếp khi đứt, gọi xuất file
 core/exporters.py   xuất EPUB (zipfile thuần) và TXT
+core/importer.py    nhập EPUB/TXT/DOCX/PDF/HTML/MD có sẵn trên máy vào thư viện
 core/store.py       cài đặt, bộ lọc, sổ thư viện
 core/server.py      máy chủ nội bộ + API
 plugins/            mỗi file một nguồn truyện

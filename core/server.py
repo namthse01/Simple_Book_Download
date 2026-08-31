@@ -1,6 +1,7 @@
 """May chu noi bo phuc vu giao dien web + API."""
 from __future__ import annotations
 
+import base64
 import json
 import mimetypes
 import os
@@ -13,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
-from . import reader, store
+from . import importer, reader, store
 from .downloader import Manager
 from .net import Http
 from .sources import Registry
@@ -187,6 +188,15 @@ class Handler(BaseHTTPRequestHandler):
                 "cover": entry.get("cover", ""), "url": entry.get("url", ""),
             }, "chuong": chapters})
 
+        if path == "/api/cover":
+            # anh bia cua sach nhap tu may: nam trong thu muc sach, file cover.*
+            entry = self._entry(q.get("url") or "")
+            folder = Path(entry.get("folder") or "") if entry else None
+            for p in (sorted(folder.glob("cover.*")) if folder and folder.is_dir() else []):
+                ctype = mimetypes.guess_type(p.name)[0] or "image/jpeg"
+                return self._send(200, p.read_bytes(), ctype)
+            return self._send(404, b"", "image/jpeg")
+
         if path == "/api/read/chapter":
             entry = self._entry(q.get("url") or "")
             if entry is None:
@@ -225,6 +235,29 @@ class Handler(BaseHTTPRequestHandler):
             formats = data.get("dinh_dang") or store.load_settings()["formats"]
             job = app.manager.submit(src, book, chapters, formats)
             return self.json({"ok": True, "viec": job.to_dict()})
+
+        if path == "/api/import":
+            # Nhap tai lieu co san: file gui len dang base64 trong JSON.
+            files = []
+            for f in data.get("files") or []:
+                name = (f.get("name") or "").strip()
+                try:
+                    raw = base64.b64decode(f.get("b64") or "")
+                except Exception:
+                    raw = b""
+                if name and raw:
+                    files.append((name, raw))
+            if not files:
+                return self.fail("chưa nhận được file nào "
+                                 "(nhận .epub, .txt, .docx, .pdf, .html, .md)")
+            ket = importer.import_files(
+                files, merge=bool(data.get("gop")),
+                title=(data.get("ten") or "").strip(),
+                author=(data.get("tac_gia") or "").strip(),
+                formats=data.get("dinh_dang"),
+                chi_thu=bool(data.get("thu")))
+            return self.json({"ok": True, "sach": ket["sach"], "loi": ket["loi"],
+                              "thu_vien": store.load_library()})
 
         if path == "/api/job/cancel":
             return self.json({"ok": app.manager.cancel(data.get("id", ""))})
@@ -277,6 +310,8 @@ class Handler(BaseHTTPRequestHandler):
         entry = self._entry(url)
         if entry is None:
             return self.fail("không có truyện này trong thư viện")
+        if url.startswith("local:"):
+            return self.fail("sách nhập từ máy không có nguồn web để kiểm tra chương mới")
         src = app.registry.for_url(url)
         if src is None:
             return self.fail("không có plugin nào xử lý được link này")

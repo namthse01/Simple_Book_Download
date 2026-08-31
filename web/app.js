@@ -251,6 +251,145 @@ async function napKho() {
 
 $('#btMoThuMuc').addEventListener('click', () => api('/api/open', {}).catch(() => { }));
 
+/* ================= nhập tài liệu (EPUB/TXT có sẵn trên máy) ================= */
+let NHAP = [];   // [{name, file}]
+
+$('#btNhap').addEventListener('click', () => $('#oFileNhap').click());
+$('#nhThem').addEventListener('click', () => $('#oFileNhap').click());
+$('#oFileNhap').addEventListener('change', () => {
+  themFileNhap($('#oFileNhap').files);
+  $('#oFileNhap').value = '';
+});
+
+// kéo thả file vào bất kỳ đâu trong cửa sổ
+document.addEventListener('dragover', (e) => {
+  if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) e.preventDefault();
+});
+document.addEventListener('drop', (e) => {
+  if (!e.dataTransfer || !e.dataTransfer.files.length) return;
+  e.preventDefault();
+  themFileNhap(e.dataTransfer.files);
+});
+
+function themFileNhap(list) {
+  const ok = Array.from(list).filter((f) => /\.(epub|txt|docx|pdf|x?html?|md|markdown)$/i.test(f.name));
+  if (!ok.length) { nhac('Chỉ nhận file EPUB, TXT, DOCX, PDF, HTML hoặc Markdown.'); return; }
+  // sắp lô mới theo tên (phan1, phan2, … đúng thứ tự số) rồi nối vào cuối
+  ok.sort((a, b) => a.name.localeCompare(b.name, 'vi', { numeric: true }));
+  NHAP = NHAP.concat(ok.filter((f) => !NHAP.some((x) => x.name === f.name))
+    .map((f) => ({ name: f.name, file: f })));
+  $('#nhBao').textContent = '';
+  veNhap();
+  $('#manNhap').classList.remove('hidden');
+}
+
+function veNhap() {
+  const kb = (n) => (n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.ceil(n / 1024) + ' KB');
+  $('#nhDs').innerHTML = NHAP.length ? NHAP.map((x, i) => `
+    <div class="nhap-f">
+      <span class="n">${esc(x.name)}</span><span class="s">${kb(x.file.size)}</span>
+      <button class="ghost" data-len="${i}" title="Đưa lên trên" ${i ? '' : 'disabled'}>↑</button>
+      <button class="ghost" data-bo="${i}" title="Bỏ file này">✕</button>
+    </div>`).join('') : '<div class="empty">Chưa chọn file nào.</div>';
+  $$('#nhDs [data-len]').forEach((b) => b.addEventListener('click', () => {
+    const i = Number(b.dataset.len);
+    [NHAP[i - 1], NHAP[i]] = [NHAP[i], NHAP[i - 1]];
+    veNhap();
+  }));
+  $$('#nhDs [data-bo]').forEach((b) => b.addEventListener('click', () => {
+    NHAP.splice(Number(b.dataset.bo), 1);
+    veNhap();
+  }));
+  $('#nhGopKhung').classList.toggle('hidden', NHAP.length < 2);
+  // tên sách/tác giả gõ tay chỉ có nghĩa khi 1 file, hoặc khi gộp thành 1 cuốn
+  const suaDuoc = NHAP.length === 1 || (NHAP.length > 1 && $('#nhGop').checked);
+  $('#nhTen').disabled = !suaDuoc;
+  $('#nhTacGia').disabled = !suaDuoc;
+  // danh sách file / thứ tự / kiểu gộp đổi rồi thì mục lục xem thử cũ hết đúng
+  $('#nhThu').classList.add('hidden');
+  $('#nhThu').innerHTML = '';
+}
+
+$('#nhGop').addEventListener('change', veNhap);
+$('#nhHuy').addEventListener('click', () => {
+  NHAP = [];
+  $('#manNhap').classList.add('hidden');
+});
+
+const docB64 = (file) => new Promise((res, rej) => {
+  const r = new FileReader();
+  r.onload = () => res(String(r.result).split(',')[1] || '');
+  r.onerror = () => rej(new Error('không đọc được ' + file.name));
+  r.readAsDataURL(file);
+});
+
+async function guiNhap(thu) {
+  // đọc file thành base64 rồi gửi; thu=true chỉ tách chương để xem trước
+  $('#nhBao').textContent = 'Đang đọc file…';
+  const files = [];
+  for (const x of NHAP) files.push({ name: x.name, b64: await docB64(x.file) });
+  $('#nhBao').textContent = thu
+    ? 'Đang tách chương thử… (file lớn có thể mất một lúc)'
+    : 'Đang tách chương và đóng gói… (file lớn có thể mất một lúc)';
+  const dinhDang = [];
+  if ($('#nhEpub').checked) dinhDang.push('epub');
+  if ($('#nhTxt').checked) dinhDang.push('txt');
+  return api('/api/import', {
+    files,
+    thu: !!thu,
+    gop: NHAP.length > 1 && $('#nhGop').checked,
+    ten: $('#nhTen').value.trim(),
+    tac_gia: $('#nhTacGia').value.trim(),
+    dinh_dang: dinhDang,
+  });
+}
+
+$('#nhXemThu').addEventListener('click', async () => {
+  if (!NHAP.length) return;
+  const nut = $('#nhXemThu');
+  nut.disabled = true;
+  try {
+    const d = await guiNhap(true);
+    $('#nhBao').textContent = '';
+    $('#nhThu').innerHTML = d.sach.map((s) => `
+      <div class="thu-sach">
+        <b>${esc(s.title)}</b>${s.author ? ' — ' + esc(s.author) : ''}
+        <span class="s">· ${s.chapters} chương</span>
+        <ol>${s.muc_luc.map((t) => `<li>${esc(t)}</li>`).join('')}${
+        s.chapters > s.muc_luc.length ? '<li>… còn nữa</li>' : ''}</ol>
+      </div>`).join('')
+      + (d.loi && d.loi.length
+        ? `<div class="thu-loi">${d.loi.map(esc).join('<br>')}</div>` : '');
+    $('#nhThu').classList.remove('hidden');
+  } catch (e) {
+    $('#nhBao').textContent = 'Không xem thử được: ' + e.message;
+  }
+  nut.disabled = false;
+});
+
+$('#nhOk').addEventListener('click', async () => {
+  if (!NHAP.length) return;
+  if (!$('#nhEpub').checked && !$('#nhTxt').checked) {
+    nhac('Chọn ít nhất một định dạng xuất.');
+    return;
+  }
+  const nut = $('#nhOk');
+  nut.disabled = true;
+  try {
+    const d = await guiNhap(false);
+    NHAP = [];
+    $('#manNhap').classList.add('hidden');
+    $('#nhTen').value = '';
+    $('#nhTacGia').value = '';
+    napKho();
+    if (d.loi && d.loi.length) await nhac('Có file không nhập được:\n' + d.loi.join('\n'));
+    else if (d.sach.length) await nhac('Đã nhập ' + d.sach.length + ' cuốn vào thư viện.');
+  } catch (e) {
+    $('#nhBao').textContent = 'Không nhập được: ' + e.message;
+  }
+  nut.disabled = false;
+});
+
 /* ================= cài đặt ================= */
 async function napCaiDat() {
   try {
@@ -427,6 +566,8 @@ async function moManTruyen(url) {
   const muc = (await api('/api/library')).thu_vien.find((x) => x.url === url);
   KHO.url = url;
   KHO.folder = muc ? muc.folder : '';
+  // sách nhập từ máy không có nguồn web -> không có gì để "cập nhật chương mới"
+  $('#mtCapNhat').classList.toggle('hidden', url.startsWith('local:'));
   try {
     const d = await api('/api/read/list?url=' + encodeURIComponent(url));
     KHO.ten = d.truyen.title;
