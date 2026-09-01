@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from bs4 import BeautifulSoup, NavigableString, Tag
 
 # Cac the/khoi gan nhu chac chan la rac trong moi trang truyen
@@ -34,7 +35,7 @@ def html_to_lines(html: str) -> list[str]:
     for raw in text.split("\n"):
         s = re.sub(r"[ \t\r\f\v]+", " ", raw).strip()
         if s:
-            lines.append(s)
+            lines.append(unicodedata.normalize("NFC", s))
     return lines
 
 
@@ -71,6 +72,9 @@ class Cleaner:
         extra_drop = extra_drop or set()
         out: list[str] = []
         for line in lines:
+            # ve dau ghep (NFD, hay gap o EPUB convert) -> dau dung san (NFC),
+            # khong thi phong chu co chan ve dau tach roi khoi con chu rat xau
+            line = unicodedata.normalize("NFC", line)
             for s in self.remove:
                 line = line.replace(s, "")
             for pat, rep in self.regex:

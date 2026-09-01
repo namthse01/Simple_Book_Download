@@ -1,0 +1,12 @@
+{
+  "name": "DCR - DragonCloud_reading",
+  "short_name": "DCReading",
+  "description": "Tải truyện chữ, nhập tài liệu, đọc sách",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1116",
+  "theme_color": "#0f1116",
+  "icons": [
+    { "src": "logo.png", "sizes": "any", "type": "image/png" }
+  ]
+}

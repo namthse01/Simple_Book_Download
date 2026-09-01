@@ -30,9 +30,9 @@ Ok $python
 
 # ---- 2. Thu vien ----
 Say 'Dang cai thu vien can thiet...'
-& $python -m pip install --quiet --disable-pip-version-check requests beautifulsoup4 lxml pywebview pymupdf
+& $python -m pip install --quiet --disable-pip-version-check requests beautifulsoup4 lxml pywebview pymupdf qrcode
 if ($LASTEXITCODE -ne 0) { Bad 'pip bao loi - thu chay lai lenh pip thu cong de xem chi tiet' }
-else { Ok 'requests, beautifulsoup4, lxml, pywebview, pymupdf' }
+else { Ok 'requests, beautifulsoup4, lxml, pywebview, pymupdf, qrcode' }
 
 # ---- 3. Shortcut ----
 Say 'Dang tao shortcut...'

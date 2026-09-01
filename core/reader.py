@@ -7,6 +7,7 @@ can tai lai tu web.
 from __future__ import annotations
 
 import shutil
+import unicodedata
 from pathlib import Path
 
 from . import store
@@ -30,7 +31,7 @@ def list_chapters(folder: str | Path) -> list[dict]:
             continue
         try:
             with p.open(encoding="utf-8") as f:
-                title = f.readline().strip()
+                title = unicodedata.normalize("NFC", f.readline().strip())
         except OSError:
             continue
         out.append({"index": idx, "title": title or f"Chương {idx}"})
@@ -73,7 +74,7 @@ def read_chapter(folder: str | Path, index: int) -> dict | None:
     if not p.is_file():
         return None
     raw = p.read_text(encoding="utf-8").split("\n")
-    title = raw[0].strip() if raw else f"Chương {index}"
+    title = unicodedata.normalize("NFC", raw[0].strip()) if raw else f"Chương {index}"
     lines = Cleaner(store.load_filters()).clean(raw[1:], _boilerplate(folder))
     # Vai trang nhet lai ten chuong vao dau noi dung -> bo di cho khoi lap voi
     # tieu de hien ben tren. Phai lam SAU khi loc, vi truoc do no con bi ke sau

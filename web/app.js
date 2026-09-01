@@ -224,6 +224,13 @@ setInterval(napViec, 1200);
 async function napKho() {
   try {
     const d = await api('/api/library');
+    // đang đọc dở cuốn nào thì đưa nút "Đọc tiếp" lên đầu thư viện
+    let ganNhat = '';
+    try { ganNhat = localStorage.getItem('doc:gan-nhat') || ''; } catch (e) { /**/ }
+    const gn = d.thu_vien.find((x) => x.url === ganNhat);
+    $('#khoDocTiep').innerHTML = gn
+      ? `<button class="primary big" id="btDocTiep">▶ Đọc tiếp: ${esc(gn.title)}</button>` : '';
+    if (gn) $('#btDocTiep').addEventListener('click', () => moDoc(gn.url));
     $('#dsKho').innerHTML = d.thu_vien.length ? d.thu_vien.map((b) => `
       <div class="card-lib">
         <div class="main" data-doc="${esc(b.url)}" title="Bấm để đọc">
@@ -402,6 +409,8 @@ async function napCaiDat() {
     $('#sTach').value = c.split_every;
     $('#sProxy').value = c.proxy || '';
     $('#sTuLoc').checked = !!c.auto_clean;
+    $('#sLan').checked = !!c.lan;
+    napLan();
     $('#fRemove').value = (f.remove || []).join('\n');
     $('#fDrop').value = (f.drop_line || []).join('\n');
     $('#fNames').value = Object.entries(f.names || {}).map(([k, v]) => `${k} = ${v}`).join('\n');
@@ -425,14 +434,33 @@ $('#btLuu').addEventListener('click', async () => {
         split_every: Number($('#sTach').value),
         proxy: $('#sProxy').value.trim(),
         auto_clean: $('#sTuLoc').checked,
+        lan: $('#sLan').checked,
       },
       bo_loc: { remove: dong('#fRemove'), drop_line: dong('#fDrop'), regex: [], names },
     });
     const ok = $('#luuXong');
     ok.classList.remove('hidden');
     setTimeout(() => ok.classList.add('hidden'), 1800);
+    napLan();
   } catch (e) { nhac('Không lưu được: ' + e.message); }
 });
+
+async function napLan() {
+  try {
+    const d = await api('/api/lan-info');
+    $('#lanKhung').classList.toggle('hidden', !d.mo_rong);
+    const canKhoiDongLai = d.lan && !d.mo_rong;
+    $('#lanBao').classList.toggle('hidden', !canKhoiDongLai);
+    if (canKhoiDongLai) {
+      $('#lanBao').textContent =
+        'Đã bật, nhưng app đang chạy theo kiểu cũ — tắt mở lại app là điện thoại vào được.';
+    }
+    if (d.mo_rong) {
+      $('#lanQr').innerHTML = d.qr || '';
+      $('#lanUrl').textContent = d.url;
+    }
+  } catch (e) { /* không chặn màn cài đặt chỉ vì thiếu thông tin mạng */ }
+}
 
 $('#btNapLai').addEventListener('click', async () => {
   await api('/api/reload', {});
@@ -471,7 +499,9 @@ async function moDoc(url, batDau) {
     $('#rTenTruyen').textContent = DOC.ten;
     veMucLuc();
     kieuDoc();
+    $('#rBang').classList.add('hidden');
     $('#docTruyen').classList.remove('hidden');
+    try { localStorage.setItem('doc:gan-nhat', url); } catch (e) { /**/ }
     const moc = batDau != null ? batDau : doiViTri(url);
     const vt = DOC.chuong.findIndex((c) => c.index === moc);
     await doChuong(vt >= 0 ? vt : 0);
@@ -501,10 +531,20 @@ async function doChuong(i) {
     $('#rTenChuong').textContent = d.chuong.title;
     box.innerHTML = '<div class="khung"><h2>' + esc(d.chuong.title) + '</h2>'
       + d.chuong.lines.map((l) => '<p>' + esc(l) + '</p>').join('')
-      + (cuoi ? '<p class="het">— Hết phần đã tải về —</p>' : '')
+      + (cuoi ? '<p class="het">— Hết phần đã tải về —</p>'
+        : '<button class="het-nut">Chương sau →</button>')
       + '</div>';
-    box.scrollTop = 0;
-    $('#rViTri').textContent = `Chương ${i + 1} / ${DOC.chuong.length}`;
+    const nutSau = box.querySelector('.het-nut');
+    if (nutSau) nutSau.addEventListener('click', () => doChuong(i + 1));
+    // đọc dở chương này lần trước thì trả lại đúng chỗ đang cuộn
+    let cuon = 0;
+    try {
+      const [ci, ty] = (localStorage.getItem('doc:cuon:' + DOC.url) || '').split(':');
+      if (Number(ci) === ch.index) cuon = Number(ty) || 0;
+    } catch (e) { /**/ }
+    box.scrollTop = cuon > 0.01 && cuon < 0.99
+      ? cuon * (box.scrollHeight - box.clientHeight) : 0;
+    capNhatPhanTram();
     $('#rTruoc').disabled = i === 0;
     $('#rSau').disabled = cuoi;
     $$('#rDsChuong button').forEach((b, k) => b.classList.toggle('on', k === i));
@@ -517,39 +557,84 @@ async function doChuong(i) {
   }
 }
 
-function kieuDoc() {
-  let co = 18, giay = false;
-  try {
-    co = Number(localStorage.getItem('doc:co')) || 18;
-    giay = localStorage.getItem('doc:nen') === 'giay';
-  } catch (e) { /* trình duyệt chặn localStorage thì dùng mặc định */ }
-  $('#rNoiDung').style.setProperty('--co-chu', co + 'px');
-  $('#docTruyen').classList.toggle('giay', giay);
-  $('#rNen').textContent = giay ? 'Nền tối' : 'Nền giấy';
+/* ---- nhớ chỗ cuộn + phần trăm đã đọc ---- */
+function tyLeCuon() {
+  const nd = $('#rNoiDung');
+  const max = nd.scrollHeight - nd.clientHeight;
+  return max > 5 ? Math.min(1, nd.scrollTop / max) : 1;
 }
 
-function doiCoChu(delta) {
-  let co = 18;
-  try { co = Number(localStorage.getItem('doc:co')) || 18; } catch (e) { /**/ }
-  co = Math.max(13, Math.min(34, co + delta));
-  try { localStorage.setItem('doc:co', String(co)); } catch (e) { /**/ }
+function capNhatPhanTram() {
+  if (!DOC.chuong.length) return;
+  $('#rViTri').textContent =
+    `Chương ${DOC.i + 1}/${DOC.chuong.length} · ${Math.round(tyLeCuon() * 100)}%`;
+}
+
+let cuonHen = 0;
+$('#rNoiDung').addEventListener('scroll', () => {
+  capNhatPhanTram();
+  clearTimeout(cuonHen);
+  cuonHen = setTimeout(() => {
+    if (!DOC.url || !DOC.chuong.length) return;
+    try {
+      localStorage.setItem('doc:cuon:' + DOC.url,
+        DOC.chuong[DOC.i].index + ':' + tyLeCuon().toFixed(4));
+    } catch (e) { /**/ }
+  }, 300);
+});
+
+/* ---- kiểu đọc: cỡ chữ, phông, giãn dòng, bề ngang, nền ---- */
+const KIEU_MAC_DINH = { co: 18, phong: 'sans', gian: '1.85', rong: '44', nen: 'toi' };
+
+function docKieu() {
+  const k = { ...KIEU_MAC_DINH };
+  try {
+    const luu = JSON.parse(localStorage.getItem('doc:kieu') || 'null');
+    if (luu) return { ...k, ...luu };
+    // chuyển cài đặt từ bản cũ (chỉ có cỡ chữ + nền giấy)
+    k.co = Number(localStorage.getItem('doc:co')) || k.co;
+    if (localStorage.getItem('doc:nen') === 'giay') k.nen = 'giay';
+  } catch (e) { /* trình duyệt chặn localStorage thì dùng mặc định */ }
+  return k;
+}
+
+function doiKieu(key, val) {
+  const k = docKieu();
+  k[key] = val;
+  try { localStorage.setItem('doc:kieu', JSON.stringify(k)); } catch (e) { /**/ }
   kieuDoc();
 }
+
+function kieuDoc() {
+  const k = docKieu();
+  const nd = $('#rNoiDung');
+  nd.style.setProperty('--co-chu', k.co + 'px');
+  nd.style.setProperty('--gian-doc', k.gian);
+  nd.style.setProperty('--rong-doc', k.rong + 'rem');
+  nd.style.setProperty('--font-doc', k.phong === 'serif'
+    ? "Georgia,'Times New Roman',serif"
+    : "'Segoe UI',system-ui,-apple-system,sans-serif");
+  $('#docTruyen').classList.toggle('giay', k.nen === 'giay');
+  $('#docTruyen').classList.toggle('den', k.nen === 'den');
+  $('#rCoChu').textContent = k.co;
+  [['#rPhong', k.phong], ['#rGian', k.gian], ['#rRong', k.rong], ['#rNenOps', k.nen]]
+    .forEach(([sel, val]) => $$(sel + ' button')
+      .forEach((b) => b.classList.toggle('on', b.dataset.v === String(val))));
+}
+
+$('#rAa').addEventListener('click', () => $('#rBang').classList.toggle('hidden'));
+$('#rNho').addEventListener('click', () => doiKieu('co', Math.max(13, docKieu().co - 1)));
+$('#rTo').addEventListener('click', () => doiKieu('co', Math.min(34, docKieu().co + 1)));
+[['#rPhong', 'phong'], ['#rGian', 'gian'], ['#rRong', 'rong'], ['#rNenOps', 'nen']]
+  .forEach(([sel, key]) => $$(sel + ' button')
+    .forEach((b) => b.addEventListener('click', () => doiKieu(key, b.dataset.v))));
+// bấm vào phần chữ thì thu bảng chỉnh lại
+$('#rNoiDung').addEventListener('click', () => $('#rBang').classList.add('hidden'));
 
 $('#rDong').addEventListener('click', () => $('#docTruyen').classList.add('hidden'));
 $('#rTruoc').addEventListener('click', () => doChuong(DOC.i - 1));
 $('#rSau').addEventListener('click', () => doChuong(DOC.i + 1));
 $('#rMucLuc').addEventListener('click', () => $('#rDsChuong').classList.toggle('hidden'));
-$('#rNho').addEventListener('click', () => doiCoChu(-1));
-$('#rTo').addEventListener('click', () => doiCoChu(1));
-$('#rNen').addEventListener('click', () => {
-  let giay = false;
-  try {
-    giay = localStorage.getItem('doc:nen') !== 'giay';
-    localStorage.setItem('doc:nen', giay ? 'giay' : 'toi');
-  } catch (e) { /**/ }
-  kieuDoc();
-});
 
 document.addEventListener('keydown', (e) => {
   if ($('#docTruyen').classList.contains('hidden')) return;

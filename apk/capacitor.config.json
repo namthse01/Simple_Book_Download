@@ -1,0 +1,13 @@
+{
+  "appId": "com.dragoncloud.dcreader",
+  "appName": "DCReader",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

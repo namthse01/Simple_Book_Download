@@ -16,6 +16,7 @@ import io
 import posixpath
 import re
 import time
+import unicodedata
 import uuid
 import zipfile
 import xml.etree.ElementTree as ET
@@ -36,13 +37,13 @@ def _decode(data: bytes) -> str:
                      (codecs.BOM_UTF16_LE, "utf-16"),
                      (codecs.BOM_UTF16_BE, "utf-16")):
         if data.startswith(bom):
-            return data.decode(enc, errors="replace")
+            return unicodedata.normalize("NFC", data.decode(enc, errors="replace"))
     for enc in ("utf-8", "gb18030", "cp1258", "cp1252"):
         try:
-            return data.decode(enc)
+            return unicodedata.normalize("NFC", data.decode(enc))
         except (UnicodeDecodeError, UnicodeError):
             continue
-    return data.decode("utf-8", errors="replace")
+    return unicodedata.normalize("NFC", data.decode("utf-8", errors="replace"))
 
 
 # Dong mo dau chuong: "Chương 12", "Chapter 3:", "Hồi 5 - ...", "Quyển 2 Chương 7"...
@@ -544,8 +545,10 @@ def _folder_moi(out_root: Path, title: str) -> Path:
 
 
 def _save_book(d: dict, cfg: dict, formats: list[str]) -> dict:
-    book = Book(title=d["title"], url="", source="nhập từ máy",
-                author=d.get("author", ""), description=d.get("description", ""),
+    chuan = lambda s: unicodedata.normalize("NFC", s or "")   # noqa: E731
+    book = Book(title=chuan(d["title"]), url="", source="nhập từ máy",
+                author=chuan(d.get("author", "")),
+                description=chuan(d.get("description", "")),
                 genres=d.get("genres", []))
 
     folder = _folder_moi(Path(cfg["output_dir"]), book.title)

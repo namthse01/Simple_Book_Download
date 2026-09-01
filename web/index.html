@@ -2,9 +2,12 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1116">
 <title>DCR - DragonCloud_reading</title>
 <link rel="icon" type="image/png" href="logo.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="logo.png">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -90,6 +93,7 @@
     </div>
     <p class="hint">Có sẵn tài liệu trên máy? Bấm <b>Nhập tài liệu</b> (hoặc kéo thả file vào cửa sổ này) — nhận EPUB, TXT, DOCX, PDF, HTML, Markdown; app tách chương rồi đưa vào thư viện như truyện tải về.</p>
     <input id="oFileNhap" type="file" accept=".epub,.txt,.docx,.pdf,.html,.htm,.xhtml,.md,.markdown" multiple hidden>
+    <div id="khoDocTiep" class="doc-tiep"></div>
     <div id="dsKho" class="grid"></div>
   </section>
 
@@ -122,6 +126,23 @@
         </label>
       </div>
       <label class="cb"><input type="checkbox" id="sTuLoc"> Tự phát hiện và xoá dòng rác lặp lại ở mọi chương</label>
+    </div>
+
+    <div class="card">
+      <h3>Đọc trên điện thoại</h3>
+      <label class="cb"><input type="checkbox" id="sLan">
+        <span>Cho thiết bị khác trong <b>cùng mạng Wi-Fi</b> truy cập (điện thoại, máy tính bảng)</span></label>
+      <p class="hint" style="margin:.5rem 0 0">Bật xong bấm <b>Lưu cài đặt</b> rồi <b>tắt mở lại app</b>.
+Lần đầu Windows có thể hỏi cho phép Python qua tường lửa — chọn Allow với mạng riêng (Private).
+Trên điện thoại, mở link bằng Chrome rồi chọn <b>Thêm vào màn hình chính</b> là thành app đọc truyện.</p>
+      <div id="lanKhung" class="lan-khung hidden">
+        <div id="lanQr" class="lan-qr"></div>
+        <div>
+          <p style="margin:0">Điện thoại quét mã, hoặc gõ địa chỉ:</p>
+          <p id="lanUrl" class="lan-url"></p>
+        </div>
+      </div>
+      <p id="lanBao" class="hint hidden" style="margin:.5rem 0 0"></p>
     </div>
 
     <div class="card">
@@ -235,18 +256,49 @@ Bấm <b>Xem thử</b> để xem mục lục sẽ tách ra sao trước khi nh�
 <!-- ============ TRÌNH ĐỌC TRUYỆN ============ -->
 <div id="docTruyen" class="reader hidden">
   <header class="reader-top">
-    <button class="ghost" id="rDong">← Thư viện</button>
+    <button class="ghost" id="rDong">←</button>
     <div class="reader-title">
       <b id="rTenTruyen"></b>
       <span id="rTenChuong"></span>
     </div>
     <div class="reader-tools">
       <button class="ghost" id="rMucLuc">Mục lục</button>
-      <button class="ghost" id="rNho" title="Chữ nhỏ hơn">A−</button>
-      <button class="ghost" id="rTo" title="Chữ to hơn">A+</button>
-      <button class="ghost" id="rNen" title="Đổi nền đọc">Nền giấy</button>
+      <button class="ghost" id="rAa" title="Chỉnh chữ và nền">Aa</button>
     </div>
   </header>
+
+  <!-- bảng chỉnh kiểu đọc -->
+  <div id="rBang" class="reader-panel hidden">
+    <div class="rp-row">
+      <span class="rp-lbl">Cỡ chữ</span>
+      <div class="rp-ops"><button id="rNho">A−</button><span id="rCoChu" class="rp-val"></span><button id="rTo">A+</button></div>
+    </div>
+    <div class="rp-row">
+      <span class="rp-lbl">Phông</span>
+      <div class="rp-ops" id="rPhong">
+        <button data-v="serif" style="font-family:Georgia,serif">Có chân</button>
+        <button data-v="sans">Không chân</button>
+      </div>
+    </div>
+    <div class="rp-row">
+      <span class="rp-lbl">Giãn dòng</span>
+      <div class="rp-ops" id="rGian">
+        <button data-v="1.6">Sát</button><button data-v="1.85">Vừa</button><button data-v="2.15">Thoáng</button>
+      </div>
+    </div>
+    <div class="rp-row">
+      <span class="rp-lbl">Bề ngang</span>
+      <div class="rp-ops" id="rRong">
+        <button data-v="34">Hẹp</button><button data-v="44">Vừa</button><button data-v="60">Rộng</button>
+      </div>
+    </div>
+    <div class="rp-row">
+      <span class="rp-lbl">Nền</span>
+      <div class="rp-ops" id="rNenOps">
+        <button data-v="toi">Tối</button><button data-v="giay">Giấy</button><button data-v="den">Đen</button>
+      </div>
+    </div>
+  </div>
 
   <div class="reader-body">
     <aside id="rDsChuong" class="reader-list hidden"></aside>
@@ -254,9 +306,9 @@ Bấm <b>Xem thử</b> để xem mục lục sẽ tách ra sao trước khi nh�
   </div>
 
   <footer class="reader-nav">
-    <button id="rTruoc">← Chương trước</button>
+    <button id="rTruoc">←</button>
     <span id="rViTri" class="muted"></span>
-    <button id="rSau">Chương sau →</button>
+    <button id="rSau">→</button>
   </footer>
 </div>
 

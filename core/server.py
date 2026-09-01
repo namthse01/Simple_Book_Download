@@ -6,6 +6,7 @@ import json
 import mimetypes
 import os
 import re
+import socket
 import subprocess
 import sys
 import threading
@@ -188,6 +189,28 @@ class Handler(BaseHTTPRequestHandler):
                 "cover": entry.get("cover", ""), "url": entry.get("url", ""),
             }, "chuong": chapters})
 
+        if path == "/api/lan-info":
+            # dia chi de dien thoai trong cung mang vao doc + ma QR quet cho nhanh
+            lan = bool(store.load_settings().get("lan"))
+            mo_rong = getattr(app, "bound_host", "127.0.0.1") == "0.0.0.0"
+            ip = _lan_ip()
+            url = f"http://{ip}:{getattr(app, 'bound_port', 0)}/" if mo_rong else ""
+            qr = ""
+            if url:
+                try:
+                    import io as _io
+                    import qrcode
+                    import qrcode.image.svg
+                    q = qrcode.QRCode(box_size=8, border=2)
+                    q.add_data(url)
+                    buf = _io.BytesIO()
+                    q.make_image(image_factory=qrcode.image.svg.SvgPathImage).save(buf)
+                    qr = buf.getvalue().decode("utf-8")
+                except Exception:
+                    pass                       # thieu thu vien qrcode thi chi hien link
+            return self.json({"ok": True, "lan": lan, "mo_rong": mo_rong,
+                              "ip": ip, "url": url, "qr": qr})
+
         if path == "/api/cover":
             # anh bia cua sach nhap tu may: nam trong thu muc sach, file cover.*
             entry = self._entry(q.get("url") or "")
@@ -358,8 +381,29 @@ def _cung_ten(a: str, b: str) -> bool:
     return chuan(a) == chuan(b)
 
 
+def _lan_ip() -> str:
+    """IP cua may nay trong mang noi bo (khong gui goi tin nao di that)."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))              # UDP connect khong gui goi tin nao;
+                                                # chi de he dieu hanh chon interface
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except OSError:
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except OSError:
+            return "127.0.0.1"
+
+
 def serve(port: int) -> ThreadingHTTPServer:
     global APP
     APP = App()
-    httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    # bat "lan" trong cai dat -> dien thoai cung mang vao duoc (can khoi dong lai
+    # app sau khi doi, va Windows co the hoi cho phep qua tuong lua lan dau)
+    host = "0.0.0.0" if store.load_settings().get("lan") else "127.0.0.1"
+    httpd = ThreadingHTTPServer((host, port), Handler)
+    APP.bound_host = host
+    APP.bound_port = httpd.server_address[1]
     return httpd

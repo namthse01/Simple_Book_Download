@@ -18,3 +18,12 @@ Thumbs.db
 desktop.ini
 .vscode/
 .idea/
+
+# Vo APK (DCReader): chi giu cau hinh, khong giu may nen va san pham build
+apk/node_modules/
+apk/www/
+apk/android/.gradle/
+apk/android/build/
+apk/android/app/build/
+apk/android/local.properties
+DCReader.apk

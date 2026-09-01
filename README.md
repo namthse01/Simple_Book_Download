@@ -35,7 +35,7 @@ Bấm đúp `TaiBangLink.bat` cũng được — nó hỏi link rồi tải luô
 Yêu cầu: Python 3.10+ và:
 
 ```bash
-python -m pip install requests beautifulsoup4 lxml pywebview pymupdf
+python -m pip install requests beautifulsoup4 lxml pywebview pymupdf qrcode
 ```
 
 `pywebview` chỉ cần cho cửa sổ app; thiếu nó thì vẫn chạy được bằng `--web`.
@@ -59,8 +59,11 @@ Chromium nên đừng kỳ vọng xuống vài chục MB.
      lúc tải, app báo để bạn tải lại thay vì ghép nhầm nội dung.
    - **Thư mục** mở nơi chứa file, **Xoá** xoá cả truyện lẫn thư mục (có hỏi lại).
 
-   Trong trình đọc: mục lục, chuyển chương bằng nút hoặc phím ← →, chỉnh cỡ chữ,
-   đổi nền giấy/tối. App nhớ chương đang đọc dở của từng truyện.
+   Trong trình đọc: mục lục, chuyển chương bằng nút hoặc phím ← →. Nút **Aa** mở
+   bảng chỉnh kiểu đọc: cỡ chữ, phông (có chân/không chân), giãn dòng, bề ngang,
+   nền **Tối / Giấy / Đen**. App nhớ **đúng chỗ đang cuộn dở** của từng truyện —
+   mở lại là về ngay đó, chân trang hiện % đã đọc của chương. Ở tab Thư viện có
+   nút **▶ Đọc tiếp** mở thẳng cuốn đang đọc dở gần nhất.
 
 Truyện lưu tại `Truyen\<Tên truyện>\`, kèm thư mục `chuong\` chứa từng chương dạng text.
 **Tải dở bị đứt thì chạy lại là tải tiếp** — chương nào đã có sẽ được bỏ qua.
@@ -93,6 +96,46 @@ Cách tách chương của từng loại:
 **Gộp nhiều file thành một cuốn** — sách bị xé lẻ thành `phan1.txt`, `phan2.txt`…
 thì chọn hết, tích *Gộp tất cả thành một cuốn*, sắp thứ tự bằng nút ↑ rồi nhập:
 mỗi file thành một (chùm) chương theo đúng thứ tự.
+
+---
+
+## Đọc trên điện thoại
+
+Vào **Cài đặt → Đọc trên điện thoại**, tích *Cho thiết bị khác trong cùng mạng
+Wi-Fi truy cập*, bấm **Lưu cài đặt** rồi tắt mở lại app. Lần đầu Windows có thể
+hỏi cho phép Python qua tường lửa — chọn **Allow** với mạng riêng (Private).
+
+Sau đó phần Cài đặt hiện **mã QR + địa chỉ** (kiểu `http://192.168.x.x:8765`):
+điện thoại cùng Wi-Fi quét mã là mở được toàn bộ thư viện. Trong Chrome trên
+điện thoại chọn **Thêm vào màn hình chính** — từ đó bấm icon là vào thẳng như
+một app đọc truyện. Vị trí đọc dở trên điện thoại và trên máy tính được nhớ
+riêng từng thiết bị.
+
+Chỉ thiết bị trong cùng mạng nhà vào được; tắt tuỳ chọn này thì app quay lại
+chỉ chạy trên máy tính như cũ.
+
+---
+
+## DCReader — app đọc truyện riêng cho Android
+
+Thư mục `mobile\` là một app đọc truyện **chạy độc lập trên điện thoại**:
+
+- **Tìm & tải truyện từ nguồn** (hiện có BLHVIP): tìm theo tên hoặc dán link,
+  «Đọc ngay» thì mỗi chương tự tải khi mở tới, «Tải cả truyện» thì cất hết vào
+  máy để đọc offline; nút ⟳ trên thẻ truyện kiểm tra chương mới.
+- Nhập EPUB/TXT từ bộ nhớ máy (tự tách chương như bản PC).
+- Thư viện có bìa + tiến độ; trình đọc chìm (chạm giữa màn hình để hiện/ẩn
+  thanh công cụ), bảng Aa, nhớ đúng chỗ đọc dở.
+- **Truyện đã tải nằm hẳn trong điện thoại, đọc không cần mạng, không cần
+  máy tính bật.** (Chỉ lúc tìm/tải chương mới cần mạng.)
+
+- Cài trên điện thoại: chép file **`DCReader.apk`** sang máy (Zalo/USB/Drive)
+  rồi bấm vào cài (cho phép "cài từ nguồn không rõ" nếu máy hỏi).
+- Sửa code trong `mobile\` xong muốn ra APK mới: chạy **`DongGoiAPK.ps1`**.
+  Cần bộ công cụ ở `D:	oolndroid-build\` (JDK 21 + Android SDK) và Node.
+  Vỏ APK nằm ở `apk\` (Capacitor).
+- Cách nạp truyện gọn nhất: bản PC tải truyện / đóng tài liệu → xuất EPUB →
+  chép sang điện thoại → mở DCReader bấm **＋ Nhập**.
 
 ---
 

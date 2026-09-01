@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">DCReader</string>
+    <string name="title_activity_main">DCReader</string>
+    <string name="package_name">com.dragoncloud.dcreader</string>
+    <string name="custom_url_scheme">com.dragoncloud.dcreader</string>
+</resources>

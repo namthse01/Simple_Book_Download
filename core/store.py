@@ -22,6 +22,7 @@ DEFAULT_SETTINGS = {
     "auto_clean": True,    # tu do va bo dong rac lap lai o moi chuong
     "split_every": 0,      # >0 = tach thanh nhieu tap, moi tap bay nhieu chuong
     "port": 8765,
+    "lan": False,          # True = thiet bi khac trong mang (dien thoai) vao duoc
 }
 
 DEFAULT_FILTERS = {"remove": [], "drop_line": [], "regex": [], "names": {}}
