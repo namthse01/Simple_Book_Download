@@ -578,15 +578,329 @@ async function blhNoiDung(url) {
   return htmlSangDong(doc, body);
 }
 
-/* ---------- màn tìm ---------- */
-let CT = null;                    // truyen dang xem chi tiet
+/* ================= registry nguồn ================= */
+const NGUON = {};        // id -> {id, ten, home, list, search, detail, toc, chap}
+
+// ---- BLHVIP: adapter viết tay (API riêng của trang) ----
+function blhParseList(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const laTenXau = (s) => !s || s === 'FULL' || /\.(jpe?g|png|webp|gif)$/i.test(s);
+  const seen = new Map();
+  doc.querySelectorAll('a[href]').forEach((a) => {
+    const m = (a.getAttribute('href') || '').match(/^(?:https:\/\/blhvip\.vn\/|\/)?truyen\/([a-z0-9-]+)\/?$/);
+    if (!m) return;
+    const img = a.querySelector('img');
+    // uu tien title cua the a, roi chu trong the, cuoi cung moi den alt anh
+    // (alt tren trang chu blhvip la TEN FILE anh, khong dung duoc)
+    let ten = '';
+    for (const uv of [a.getAttribute('title'), a.textContent,
+      img && img.getAttribute('alt')]) {
+      const s = chuan(uv || '');
+      if (!laTenXau(s)) { ten = s; break; }
+    }
+    let bia = '';
+    if (img) {
+      for (const uv of [img.getAttribute('src'), img.getAttribute('data-src'),
+        img.getAttribute('data-original')]) {
+        if (uv && !uv.startsWith('data:')) { bia = uv; break; }
+      }
+    }
+    const cu = seen.get(m[1]) || { ten: '', bia: '' };
+    seen.set(m[1], { ten: cu.ten || ten, bia: cu.bia || bia });
+  });
+  return [...seen.entries()]
+    .filter(([, v]) => v.ten)
+    .map(([slug, v]) => ({ ten: v.ten, link: `${SITE_BLH}/truyen/${slug}`, bia: v.bia, moTa: '' }));
+}
+
+NGUON.blhvip = {
+  id: 'blhvip',
+  ten: 'BLHVIP',
+  home: async () => [
+    { title: 'Đề cử', script: '', input: '' },
+    { title: 'Truyện hot', script: '', input: 'truyen-hot' },
+    { title: 'Mới nhất', script: '', input: 'truyen-moi-nhat' },
+    { title: 'Hoàn thành', script: '', input: 'truyen-hoan-thanh' },
+    { title: 'Thịnh hành tuần', script: '', input: 'truyen-thinh-hanh-trong-tuan' },
+  ],
+  list: async (script, input) => ({
+    items: blhParseList(await taiVe(SITE_BLH + '/' + (input || ''), 'text')),
+    next: '',
+  }),
+  search: async (kw) => ({
+    items: (await blhTim(kw)).map((x) => ({
+      ten: x.ten, link: `${SITE_BLH}/truyen/${x.slug}`, bia: x.bia,
+      moTa: [x.tacGia, x.soChuong ? x.soChuong + ' chương' : ''].filter(Boolean).join(' · '),
+    })),
+    next: '',
+  }),
+  detail: async (link) => {
+    const doc = new DOMParser().parseFromString(await taiVe(link, 'text'), 'text/html');
+    let ten = chuan((doc.querySelector('title') || {}).textContent || '');
+    ten = ten.replace(/^\s*\[[^\]]{1,20}\]\s*/, '') || chuan((doc.querySelector('h1') || {}).textContent || '');
+    const og = doc.querySelector("meta[property='og:image']");
+    const au = doc.querySelector("a[href*='tac-gia']");
+    let trangThai = '';
+    doc.querySelectorAll('p.text-info, .text-info').forEach((p) => {
+      const t = chuan(p.textContent);
+      if (!trangThai && /^(tình trạng|trạng thái)\s*:/i.test(t)) trangThai = t.split(':')[1] || '';
+    });
+    const mota = doc.querySelector('.s-content, .tabcontent');
+    return {
+      ten, tacGia: au ? chuan(au.textContent) : '',
+      bia: og ? (og.getAttribute('content') || '') : '',
+      trangThai: chuan(trangThai), moTa: mota ? chuan(mota.textContent) : '',
+    };
+  },
+  toc: async (link) => blhMucLuc(blhSlug(link)),
+  chap: async (url) => blhNoiDung(url),
+};
+
+// ---- Các nguồn VBook: chạy qua lớp giả lập vbook.js ----
+function nguonTuExt(ext) {
+  ext.__mapSearch = (ext.map && ext.map.search) || 'search.js';
+  const chuanItems = (list) => (list || []).map((x) => ({
+    ten: chuan(x.name || ''),
+    link: VB.tuyetDoi(x.link || '', x.host || ext.nguon),
+    bia: VB.tuyetDoi(x.cover || '', x.host || ext.nguon),
+    moTa: chuan(String(x.description || '').replace(/<[^>]+>/g, ' ')),
+  })).filter((x) => x.ten && x.link);
+  return {
+    id: ext.id,
+    ten: ext.ten,
+    home: async () => ((await VB.chay(ext, (ext.map && ext.map.home) || 'home.js', [])).data || [])
+      .map((t) => ({ title: t.title, script: (t.script || '').split('/').pop(), input: t.input || '' })),
+    list: async (script, input, page) => {
+      const kq = await VB.chay(ext, script, [input, page || '']);
+      return { items: chuanItems(kq.data), next: kq.data2 || '' };
+    },
+    search: async (kw, page) => {
+      const kq = await VB.chay(ext, ext.__mapSearch, [kw, page || '']);
+      return { items: chuanItems(kq.data), next: kq.data2 || '' };
+    },
+    detail: async (link) => {
+      const d = (await VB.chay(ext, (ext.map && ext.map.detail) || 'detail.js', [link])).data || {};
+      return {
+        ten: chuan(d.name || ''), tacGia: chuan(d.author || ''),
+        bia: VB.tuyetDoi(d.cover || '', d.host || ext.nguon),
+        trangThai: d.ongoing === false ? 'Hoàn thành' : (d.ongoing === true ? 'Đang ra' : ''),
+        moTa: chuan(String(d.description || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ' ')),
+      };
+    },
+    toc: async (link) => ((await VB.chay(ext, (ext.map && ext.map.toc) || 'toc.js', [link])).data || [])
+      .map((c) => ({ ten: chuan(c.name || ''), url: VB.tuyetDoi(c.url || '', c.host || ext.nguon) }))
+      .filter((c) => c.url),
+    chap: async (url) => {
+      const kq = await VB.chay(ext, (ext.map && ext.map.chap) || 'chap.js', [url]);
+      const html = String(kq.data == null ? '' : kq.data);
+      const doc = new DOMParser().parseFromString('<div id="__c">' + html + '</div>', 'text/html');
+      const lines = htmlSangDong(doc, doc.getElementById('__c'));
+      if (!lines.length) throw new Error('chương rỗng (web đổi giao diện?)');
+      return lines;
+    },
+  };
+}
+(window.NGUON_VBOOK || []).forEach((ext) => { NGUON[ext.id] = nguonTuExt(ext); });
+
+/* ---- Nguồn chung: bộ dò tự đoán cấu trúc trang — đặc sản nhà trồng.
+   Port từ plugins/generic.py của bản PC: dán link trang truyện bất kỳ,
+   app tự tìm khối danh sách chương (chấm điểm theo mật độ link chương),
+   tự suy ra kiểu đánh số trang, tự đoán khung nội dung (nhiều chữ ít link). */
+const G_CHAP_TEXT = /^\s*(ch[uư][oơ]ng|chapter|chuong|h[oồ]i|t[aậ]p|quy[eể]n|ch\.)\s*[:.\-]?\s*\d+/iu;
+const G_CHAP_HREF = /(chuong|chapter|\/c\d+([./-]|$)|\/ch\d+|episode|\/p\d+\.html)/i;
+const G_PAGE_HREF = /(trang[-=/](\d+)|[?&]page=(\d+)|\/page\/(\d+))/i;
+const G_JUNK = "script,style,ins,iframe,noscript,nav,header,footer,form,button,"
+  + ".ads,[class*='ads'],[id*='ads'],.quangcao,.share,.social,.comment,.comments,"
+  + ".pagination,.breadcrumb";
+
+async function gDoc(url) {
+  const r = await VB.fetch(url);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return { doc: new DOMParser().parseFromString(r.text(), 'text/html'), url: r.url || url };
+}
+const gMeta = (doc, prop) => {
+  const el = doc.querySelector(`meta[property='${prop}'], meta[name='${prop}']`);
+  return el ? chuan(el.getAttribute('content') || '') : '';
+};
+const gHost = (u) => { try { return new URL(u).host; } catch (e) { return ''; } };
+const gNoi = (base, href) => { try { return new URL(href, base).href; } catch (e) { return ''; } };
+
+function gPageLinks(base, doc) {
+  const host = gHost(base);
+  const out = [];
+  doc.querySelectorAll("[class*='pag'] a[href], [id*='pag'] a[href]").forEach((a) => {
+    const full = gNoi(base, a.getAttribute('href') || '');
+    if (full && gHost(full) === host && G_PAGE_HREF.test(full)) out.push(full.split('#')[0]);
+  });
+  return [...new Set(out)];
+}
+
+function gLinksOf(base, doc) {
+  // gom link chuong roi cham diem khoi cha: khoi danh sach chuong that co
+  // NHIEU link chuong va ty le link-chuong/tong-link cao
+  const host = gHost(base);
+  const found = [];
+  doc.querySelectorAll('a[href]').forEach((a) => {
+    const href = a.getAttribute('href') || '';
+    if (!href || /^(#|javascript:|mailto:)/.test(href)) return;
+    const full = gNoi(base, href);
+    if (!full || gHost(full) !== host) return;
+    const name = chuan(a.getAttribute('title') || a.textContent || '');
+    if (G_CHAP_TEXT.test(name) || G_CHAP_HREF.test(full.split('#')[0])) {
+      found.push([a, full, name]);
+    }
+  });
+  if (!found.length) return [];
+
+  const diem = new Map();               // element -> so link chuong ben trong
+  for (const [a] of found) {
+    let el = a.parentElement;
+    for (let i = 0; i < 6 && el && el !== doc.documentElement; i++) {
+      diem.set(el, (diem.get(el) || 0) + 1);
+      el = el.parentElement;
+    }
+  }
+  let best = null;
+  let bestScore = -1;
+  for (const [el, nChap] of diem) {
+    const nAll = Math.max(1, el.querySelectorAll('a[href]').length);
+    const score = (nChap * nChap) / nAll;
+    if (score > bestScore) { best = el; bestScore = score; }
+  }
+  const out = [];
+  const seen = new Set();
+  for (const [a, full, name] of found) {
+    if (best && !best.contains(a)) continue;
+    if (!seen.has(full)) { seen.add(full); out.push([full, name]); }
+  }
+  return out;
+}
+
+function gPagePattern(base, doc) {
+  let tmpl = '';
+  let maxPage = 1;
+  for (const link of gPageLinks(base, doc)) {
+    const m = G_PAGE_HREF.exec(link);
+    if (!m) continue;
+    const digits = /\d+/.exec(m[0]);
+    if (!digits) continue;
+    maxPage = Math.max(maxPage, Number(digits[0]));
+    if (!tmpl) {
+      const seg = m[0].replace(digits[0], '\x00');
+      tmpl = link.slice(0, m.index) + seg + link.slice(m.index + m[0].length);
+    }
+  }
+  return [tmpl, Math.min(maxPage, 400)];
+}
+
+NGUON.chung = {
+  id: 'chung',
+  ten: 'Nguồn chung (dán link)',
+  an: true,                              // khong hien trong chips — chi kich hoat khi dan link
+  home: async () => [],
+  list: async () => ({ items: [], next: '' }),
+  search: async () => { throw new Error('nguồn chung chỉ nhận link dán thẳng'); },
+  detail: async (url) => {
+    const { doc } = await gDoc(url);
+    let ten = chuan((doc.querySelector('h1') || {}).textContent || '')
+      || chuan((doc.querySelector('title') || {}).textContent || '')
+      || gMeta(doc, 'og:title') || 'Truyện';
+    ten = ten.replace(/^\s*\[[^\]]{1,20}\]\s*/, '').replace(/\s*[-|–]\s*[^-|–]{0,40}$/, '').trim() || 'Truyện';
+    let moTa = gMeta(doc, 'og:description') || gMeta(doc, 'description');
+    if (moTa && moTa === gMeta(doc, 'og:title')) moTa = '';
+    let tacGia = '';
+    for (const q of ["[itemprop='author']", "[class*='author']", "[rel='author']"]) {
+      const el = doc.querySelector(q);
+      if (el) { tacGia = chuan(el.textContent).slice(0, 120); break; }
+    }
+    return { ten, tacGia, bia: gNoi(url, gMeta(doc, 'og:image')), trangThai: '', moTa };
+  },
+  toc: async (url) => {
+    const dau = await gDoc(url);
+    const pages = [dau.doc];
+    const [tmpl, maxPage] = gPagePattern(url, dau.doc);
+    if (tmpl && maxPage > 1) {
+      // danh sach chuong danh so trang ro rang -> doc thang trang 2..N, 5 trang/dot
+      for (let n = 2; n <= maxPage; n += 5) {
+        const dot = [];
+        for (let k = n; k < Math.min(n + 5, maxPage + 1); k++) {
+          dot.push(gDoc(tmpl.replace('\x00', String(k))).then((r) => r.doc).catch(() => null));
+        }
+        for (const d of await Promise.all(dot)) if (d) pages.push(d);
+      }
+    } else {
+      // khong doan duoc -> do lan theo link phan trang
+      const daTham = new Set([url.split('#')[0]]);
+      const cho = gPageLinks(url, dau.doc).filter((p) => !daTham.has(p));
+      while (cho.length && daTham.size < 300) {
+        const p = cho.shift();
+        if (daTham.has(p)) continue;
+        daTham.add(p);
+        try {
+          const { doc } = await gDoc(p);
+          pages.push(doc);
+          for (const q of gPageLinks(url, doc)) if (!daTham.has(q)) cho.push(q);
+        } catch (e) { /* trang hong thi bo qua */ }
+      }
+    }
+    const seen = new Map();
+    for (const doc of pages) {
+      for (const [href, name] of gLinksOf(url, doc)) {
+        if (!seen.has(href)) seen.set(href, name);
+      }
+    }
+    return [...seen.entries()].map(([u, t], i) => ({ ten: t || `Chương ${i + 1}`, url: u }));
+  },
+  chap: async (url) => {
+    const { doc } = await gDoc(url);
+    doc.querySelectorAll(G_JUNK).forEach((e) => e.remove());
+    let khung = null;
+    for (const q of ['#chapter-c', '.chapter-c', '#chapter-content', '.chapter-content',
+      '#content', '.content-chapter', '#chr-content', '.reading-content',
+      'article .entry-content', "[itemprop='articleBody']"]) {
+      const el = doc.querySelector(q);
+      if (el && chuan(el.textContent).length > 200) { khung = el; break; }
+    }
+    if (!khung) {
+      // cham diem: nhieu chu, it link, nhieu doan
+      let bestScore = 0;
+      doc.querySelectorAll('div, article, section, td').forEach((el) => {
+        const n = chuan(el.textContent).length;
+        if (n < 300) return;
+        let linkLen = 0;
+        el.querySelectorAll('a').forEach((a) => { linkLen += chuan(a.textContent).length; });
+        const breaks = el.querySelectorAll('p, br').length;
+        let sau = 0;
+        for (let p = el; p; p = p.parentElement) sau++;
+        const score = n - 4 * linkLen + 12 * breaks + sau * 5;
+        if (score > bestScore) { khung = el; bestScore = score; }
+      });
+    }
+    if (!khung) throw new Error('không đoán được khung nội dung ở trang này');
+    const lines = htmlSangDong(doc, khung);
+    if (!lines.length) throw new Error('chương rỗng');
+    return lines;
+  },
+};
+
+const nguonCua = (b) => {
+  // sach cu luu {loai:'blhvip', slug} -> quy ve dang moi
+  if (b.nguon && !b.nguon.ext && b.nguon.loai === 'blhvip') {
+    b.nguon = { ext: 'blhvip', url: b.nguon.url || `${SITE_BLH}/truyen/${b.nguon.slug}` };
+  }
+  return b.nguon && b.nguon.ext ? NGUON[b.nguon.ext] : null;
+};
+
+/* ---------- màn khám phá ---------- */
+let CT = null;                    // {nguon, link, ten, tacGia, bia, moTa, trangThai, soChuong}
+const TIM = { nguon: '', script: '', input: '', page: '', next: '', tuKhoa: '', items: [] };
 
 $('#btTim').addEventListener('click', () => {
   $('#manTim').classList.remove('hidden');
-  $('#tTuKhoa').focus();
+  if (!TIM.nguon) chonNguon(Object.keys(NGUON)[0]);
 });
 $('#tDong').addEventListener('click', () => $('#manTim').classList.add('hidden'));
-$('#tTim').addEventListener('click', timNguon);
+$('#tTim').addEventListener('click', () => timNguon());
 $('#tTuKhoa').addEventListener('keydown', (e) => { if (e.key === 'Enter') timNguon(); });
 
 function baoTim(msg, err) {
@@ -596,44 +910,105 @@ function baoTim(msg, err) {
   el.classList.toggle('hidden', !msg);
 }
 
+function veNguonChips() {
+  $('#tNguon').innerHTML = Object.values(NGUON).filter((n) => !n.an).map((n) =>
+    `<button data-n="${n.id}" class="${n.id === TIM.nguon ? 'on' : ''}">${esc(n.ten)}</button>`).join('');
+  $$('#tNguon button').forEach((b) => b.addEventListener('click', () => chonNguon(b.dataset.n)));
+}
+
+async function chonNguon(id) {
+  TIM.nguon = id;
+  TIM.tuKhoa = '';
+  $('#tTuKhoa').value = '';
+  $('#tChiTiet').classList.add('hidden');
+  veNguonChips();
+  $('#tTab').innerHTML = '';
+  $('#tKetQua').innerHTML = '';
+  $('#tThem').classList.add('hidden');
+  baoTim('Đang lấy các mục của nguồn…');
+  try {
+    const tabs = await NGUON[id].home();
+    baoTim('');
+    $('#tTab').innerHTML = tabs.map((t, i) =>
+      `<button data-i="${i}">${esc(t.title)}</button>`).join('');
+    $$('#tTab button').forEach((b) => b.addEventListener('click', () => {
+      $$('#tTab button').forEach((x) => x.classList.remove('on'));
+      b.classList.add('on');
+      const t = tabs[Number(b.dataset.i)];
+      moTab(t.script, t.input);
+    }));
+    if (tabs.length) $('#tTab button').click();
+  } catch (e) { baoTim('Nguồn này đang lỗi: ' + e.message, true); }
+}
+
+async function moTab(script, input) {
+  TIM.script = script;
+  TIM.input = input;
+  TIM.tuKhoa = '';
+  TIM.page = '';
+  TIM.items = [];
+  await napTrang(true);
+}
+
 async function timNguon() {
   const kw = $('#tTuKhoa').value.trim();
   if (!kw) return;
   $('#tChiTiet').classList.add('hidden');
-  $('#tKetQua').innerHTML = '';
-  const link = blhSlug(kw);
-  baoTim('Đang tìm…');
-  try {
-    if (/^https?:\/\//i.test(kw)) {
-      if (!link) throw new Error('bản điện thoại mới đọc được link blhvip.vn — web khác thì dùng bản máy tính rồi chép EPUB sang');
-      baoTim('');
-      return moChiTietSlug(link);
-    }
-    const ds = await blhTim(kw);
-    baoTim(ds.length ? '' : 'Không tìm thấy truyện nào khớp.');
-    $('#tKetQua').innerHTML = ds.map((x, i) => `
-      <div class="the" data-i="${i}">
-        <div class="bia">${x.bia ? `<img loading="lazy" src="${esc(x.bia)}" alt="" onerror="this.remove()">` : '📖'}</div>
-        <div class="giua">
-          <div class="t">${esc(x.ten)}</div>
-          <div class="a">${esc(x.tacGia)}</div>
-          <div class="s">${x.soChuong} chương${x.trangThai ? ' · ' + esc(x.trangThai) : ''}</div>
-        </div>
-      </div>`).join('');
-    $$('#tKetQua .the').forEach((el) => el.addEventListener('click', () => {
-      const x = ds[Number(el.dataset.i)];
-      CT = { ...x };
-      veChiTiet();
-    }));
-  } catch (e) { baoTim('Lỗi: ' + e.message, true); }
+  if (/^https?:\/\//i.test(kw)) return moChiTietLink(kw);
+  $$('#tTab button').forEach((x) => x.classList.remove('on'));
+  TIM.tuKhoa = kw;
+  TIM.page = '';
+  TIM.items = [];
+  await napTrang(true);
 }
 
-async function moChiTietSlug(slug) {
-  baoTim('Đang đọc trang truyện…');
+async function napTrang(moi) {
+  const n = NGUON[TIM.nguon];
+  if (!n) return;
+  baoTim(moi ? 'Đang tải danh sách…' : '');
+  $('#tThem').disabled = true;
   try {
-    const ds = await blhTim(slug.replace(/-/g, ' '));
-    const x = ds.find((v) => v.slug === slug) || { ten: slug.replace(/-/g, ' '), slug, tacGia: '', bia: '', soChuong: 0, trangThai: '', moTa: '' };
-    CT = { ...x };
+    const kq = TIM.tuKhoa
+      ? await n.search(TIM.tuKhoa, TIM.page)
+      : await n.list(TIM.script, TIM.input, TIM.page);
+    TIM.items = moi ? kq.items : TIM.items.concat(kq.items);
+    TIM.next = kq.next || '';
+    TIM.page = TIM.next;
+    baoTim(TIM.items.length ? '' : 'Không có truyện nào ở mục này.');
+    veKetQua();
+  } catch (e) { baoTim('Lỗi: ' + e.message, true); }
+  $('#tThem').disabled = false;
+}
+
+function veKetQua() {
+  $('#tKetQua').innerHTML = TIM.items.map((x, i) => `
+    <div class="the" data-i="${i}">
+      <div class="bia">${x.bia ? `<img loading="lazy" src="${esc(x.bia)}" alt="" onerror="this.remove()">` : '📖'}</div>
+      <div class="giua">
+        <div class="t">${esc(x.ten)}</div>
+        <div class="a">${esc(x.moTa || '')}</div>
+      </div>
+    </div>`).join('');
+  $$('#tKetQua .the').forEach((el) => el.addEventListener('click',
+    () => moChiTietLink(TIM.items[Number(el.dataset.i)].link)));
+  $('#tThem').classList.toggle('hidden', !TIM.next);
+}
+
+$('#tThem').addEventListener('click', () => napTrang(false));
+
+async function moChiTietLink(link) {
+  // dan link: nguon nao nhan ra thi dung nguon do, khong thi BO DO TU DOAN lo
+  let id = '';
+  for (const ext of (window.NGUON_VBOOK || [])) {
+    try { if (ext.regexp && new RegExp(ext.regexp).test(link)) { id = ext.id; break; } } catch (e) { /**/ }
+  }
+  if (/blhvip\.vn/.test(link)) id = 'blhvip';
+  if (!id) id = 'chung';
+  baoTim('Đang đọc trang truyện…' + (id === 'chung' ? ' (bộ dò tự đoán cấu trúc)' : ''));
+  try {
+    const d = await NGUON[id].detail(link);
+    if (!d.ten) throw new Error('không đọc được trang này');
+    CT = { nguon: id, link, ...d };
     baoTim('');
     veChiTiet();
   } catch (e) { baoTim('Lỗi: ' + e.message, true); }
@@ -642,8 +1017,8 @@ async function moChiTietSlug(slug) {
 function veChiTiet() {
   $('#ctTen').textContent = CT.ten;
   $('#ctTacGia').textContent = CT.tacGia ? 'Tác giả: ' + CT.tacGia : '';
-  $('#ctTrangThai').textContent = CT.trangThai || '';
-  $('#ctSoChuong').textContent = (CT.soChuong ? CT.soChuong + ' chương' : '');
+  $('#ctTrangThai').textContent = [NGUON[CT.nguon].ten, CT.trangThai].filter(Boolean).join(' · ');
+  $('#ctSoChuong').textContent = CT.soChuong ? CT.soChuong + ' chương' : '';
   $('#ctMoTa').textContent = CT.moTa || '';
   const img = $('#ctBia');
   img.src = CT.bia || '';
@@ -655,22 +1030,31 @@ function veChiTiet() {
 /* ---------- thêm vào tủ ---------- */
 async function themVaoTu() {
   // da co trong tu roi thi dung lai cuon do
-  const cu = (await dsSach()).find((b) => b.nguon && b.nguon.slug === CT.slug);
+  const cu = (await dsSach()).find((b) => b.nguon && (b.nguon.url === CT.link
+    || (b.nguon.slug && CT.link.includes('/' + b.nguon.slug))));
   if (cu) return cu;
 
   baoTim('Đang lấy mục lục… (truyện dài mất chút xíu)');
-  const ml = await blhMucLuc(CT.slug, (n, t) => baoTim(`Đang lấy mục lục… trang ${n}/${t}`));
+  const ml = await NGUON[CT.nguon].toc(CT.link);
   if (!ml.length) throw new Error('không lấy được chương nào');
+  // nhieu trang ghi ten chuong kieu "Ten Truyen - Chuong 5" -> cat tien to di
+  if (CT.ten) {
+    const tienTo = new RegExp('^' + CT.ten.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[-–—:]\\s*', 'i');
+    ml.forEach((c) => { c.ten = c.ten.replace(tienTo, ''); });
+  }
   let cover = null;
   if (CT.bia) {
-    try { cover = await taiVe(CT.bia, 'blob'); } catch (e) { /* khong co bia cung chang sao */ }
+    try {
+      const r = await fetch(PROXY ? PROXY + encodeURIComponent(CT.bia) : CT.bia);
+      if (r.ok) cover = await r.blob();
+    } catch (e) { /* khong co bia cung chang sao */ }
   }
   const b = {
     id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
     title: CT.ten, author: CT.tacGia, cover,
     soChuong: ml.length, mucLuc: ml.map((c) => c.ten),
     dsUrl: ml.map((c) => c.url),
-    nguon: { loai: 'blhvip', slug: CT.slug, url: `${SITE_BLH}/truyen/${CT.slug}` },
+    nguon: { ext: CT.nguon, url: CT.link },
     daTai: 0, viTri: { chuong: 1, tyLe: 0 }, them: Date.now(), docLuc: 0,
   };
   await luuSach(b);
@@ -702,7 +1086,9 @@ $('#ctTaiHet').addEventListener('click', async () => {
 
 /* ---------- tải một chương / cả truyện ---------- */
 async function taiMotChuong(b, i) {
-  const lines = await blhNoiDung(b.dsUrl[i - 1]);
+  const n = nguonCua(b);
+  if (!n) throw new Error('không rõ nguồn của truyện này');
+  const lines = await n.chap(b.dsUrl[i - 1]);
   const title = b.mucLuc[i - 1] || `Chương ${i}`;
   const bo = [...lines];
   while (bo.length && bo[0] === title) bo.shift();
@@ -765,7 +1151,9 @@ async function capNhatTruyen(id) {
   const nut = document.querySelector(`.the[data-id="${id}"] .capnhat`);
   if (nut) nut.textContent = '…';
   try {
-    const ml = await blhMucLuc(b.nguon.slug);
+    const n = nguonCua(b);
+    if (!n) throw new Error('không rõ nguồn của truyện này');
+    const ml = await n.toc(b.nguon.url);
     const moi = ml.length - b.dsUrl.length;
     if (moi > 0) {
       b.dsUrl = ml.map((c) => c.url);

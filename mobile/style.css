@@ -56,6 +56,13 @@ button:disabled{opacity:.5}
 .tien-trinh i{display:block;height:100%;background:var(--accent2)}
 
 /* ---------- màn tìm truyện ---------- */
+.chips{display:flex;gap:.4rem;overflow-x:auto;padding:.1rem 0 .5rem;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:none;padding:.35rem .8rem;font-size:.84rem;border-radius:99px;
+  background:var(--bg2);white-space:nowrap}
+.chips button.on{background:var(--accent2);border-color:var(--accent2);color:#fff}
+.chips-tab button{background:transparent}
+.tai-them{display:block;width:100%;margin:.8rem 0;padding:.6rem}
 .man-tim{position:fixed;inset:0;z-index:40;background:var(--bg);overflow-y:auto}
 .man-tim .top{gap:.5rem}
 .man-tim input[type=search]{flex:1;min-width:0;background:var(--bg2);

@@ -41,12 +41,15 @@
 <div id="manTim" class="man man-tim hidden">
   <header class="top">
     <button class="ghost" id="tDong">←</button>
-    <input id="tTuKhoa" type="search" placeholder="Tên truyện trên BLHVIP, hoặc dán link…">
+    <input id="tTuKhoa" type="search" placeholder="Tìm truyện — hoặc dán link BẤT KỲ trang truyện nào">
     <button class="primary" id="tTim">Tìm</button>
   </header>
   <div class="than">
+    <div class="chips" id="tNguon"></div>
+    <div class="chips chips-tab" id="tTab"></div>
     <div id="tBao" class="notice hidden"></div>
     <div id="tKetQua" class="kho"></div>
+    <button id="tThem" class="tai-them hidden">Tải thêm ↓</button>
 
     <div id="tChiTiet" class="chi-tiet hidden">
       <div class="ct-dau">
@@ -133,6 +136,8 @@ mỗi chương tự tải khi mở tới (cần mạng). «Tải cả truyện»
   </div>
 </div>
 
+<script src="vbook.js"></script>
+<script src="nguon-vbook.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -120,9 +120,18 @@ chỉ chạy trên máy tính như cũ.
 
 Thư mục `mobile\` là một app đọc truyện **chạy độc lập trên điện thoại**:
 
-- **Tìm & tải truyện từ nguồn** (hiện có BLHVIP): tìm theo tên hoặc dán link,
+- **Khám phá & tải truyện từ nguồn**: chọn nguồn (BLHVIP, TruyenFull, iSach…)
+  để duyệt các mục Đề cử/Hot/Mới, tìm theo tên, hoặc **dán link BẤT KỲ trang
+  truyện nào** — bộ dò tự đoán cấu trúc (đặc sản port từ bản PC: tự tìm khối
+  danh sách chương, tự suy kiểu phân trang, tự đoán khung nội dung).
   «Đọc ngay» thì mỗi chương tự tải khi mở tới, «Tải cả truyện» thì cất hết vào
   máy để đọc offline; nút ⟳ trên thẻ truyện kiểm tra chương mới.
+- Nguồn kiểu VBook: `mobile/vbook.js` là lớp giả lập môi trường extension VBook
+  (fetch kiểu Jsoup, Html.parse, Response…), nên có thể chạy extension từ kho
+  [vbook-extensions](https://github.com/Darkrai9x/vbook-extensions) (GPL-3).
+  Muốn thêm nguồn: sửa danh sách `CHON` trong `tools/dong_goi_nguon.py` rồi chạy
+  `python tools/dong_goi_nguon.py` (nó tự chuyển mã sync→async và đóng gói vào
+  `mobile/nguon-vbook.js`). Extension nào lỗi thời với site thì vá bằng `patch`.
 - Nhập EPUB/TXT từ bộ nhớ máy (tự tách chương như bản PC).
 - Thư viện có bìa + tiến độ; trình đọc chìm (chạm giữa màn hình để hiện/ẩn
   thanh công cụ), bảng Aa, nhớ đúng chỗ đọc dở.

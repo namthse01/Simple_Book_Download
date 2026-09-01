@@ -2,9 +2,9 @@
    Truyen nam trong IndexedDB nen khong lien quan den cache nay. */
 'use strict';
 
-const CACHE = 'dcreader-v2';
-const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'manifest.json',
-  'icon-192.png', 'icon-512.png'];
+const CACHE = 'dcreader-v4';
+const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'vbook.js',
+  'nguon-vbook.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -18,14 +18,14 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
-  // chi cache giao dien cua chinh app; goi den web nguon (API truyen) de nguyen
+  // chi lo giao dien cua chinh app; goi den web nguon (API truyen) de nguyen
   if (new URL(e.request.url).origin !== self.location.origin) return;
+  // co mang: luon lay ban moi (khoi bi ket file cu); mat mang: xai cache
   e.respondWith(
-    caches.match(e.request, { ignoreSearch: true }).then((hit) => hit
-      || fetch(e.request).then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => { });
-        return res;
-      })),
+    fetch(e.request).then((res) => {
+      const copy = res.clone();
+      caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => { });
+      return res;
+    }).catch(() => caches.match(e.request, { ignoreSearch: true })),
   );
 });
