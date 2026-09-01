@@ -126,12 +126,18 @@ Thư mục `mobile\` là một app đọc truyện **chạy độc lập trên �
   danh sách chương, tự suy kiểu phân trang, tự đoán khung nội dung).
   «Đọc ngay» thì mỗi chương tự tải khi mở tới, «Tải cả truyện» thì cất hết vào
   máy để đọc offline; nút ⟳ trên thẻ truyện kiểm tra chương mới.
-- Nguồn kiểu VBook: `mobile/vbook.js` là lớp giả lập môi trường extension VBook
-  (fetch kiểu Jsoup, Html.parse, Response…), nên có thể chạy extension từ kho
-  [vbook-extensions](https://github.com/Darkrai9x/vbook-extensions) (GPL-3).
-  Muốn thêm nguồn: sửa danh sách `CHON` trong `tools/dong_goi_nguon.py` rồi chạy
-  `python tools/dong_goi_nguon.py` (nó tự chuyển mã sync→async và đóng gói vào
-  `mobile/nguon-vbook.js`). Extension nào lỗi thời với site thì vá bằng `patch`.
+- **Quản lý nguồn ngay trong app** — bấm ⚙ cạnh dãy nguồn:
+  công tắc bật/tắt từng nguồn, và **＋ Cài nguồn mới** từ file `plugin.zip`
+  định dạng extension VBook (chọn file trong máy hoặc dán link .zip) — app tự
+  chuyển mã và cài, không cần build lại; nút Xoá gỡ nguồn đã cài.
+  Kho extension cộng đồng:
+  [vbook-extensions](https://github.com/Darkrai9x/vbook-extensions) (GPL-3) —
+  lưu ý nhiều extension đã lỗi thời vì web đổi giao diện, cài xong nên thử
+  tìm/đọc một truyện xem nguồn còn sống không.
+- Nguồn đóng gói sẵn trong APK: `mobile/vbook.js` là lớp giả lập môi trường
+  extension VBook; `tools/dong_goi_nguon.py` chuyển mã sync→async và đóng vào
+  `mobile/nguon-vbook.js` (sửa danh sách `CHON` rồi chạy lại khi muốn đổi bộ
+  có sẵn; extension lỗi thời với site thì vá bằng `patch`).
 - Nhập EPUB/TXT từ bộ nhớ máy (tự tách chương như bản PC).
 - Thư viện có bìa + tiến độ; trình đọc chìm (chạm giữa màn hình để hiện/ẩn
   thanh công cụ), bảng Aa, nhớ đúng chỗ đọc dở.

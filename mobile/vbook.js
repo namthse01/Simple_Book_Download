@@ -197,5 +197,101 @@ window.VB = (function () {
     return kq;
   }
 
-  return { chay: chay, Html: Html, fetch: vbFetch, tuyetDoi: tuyetDoi };
+  /* ---------- cai extension luc chay: chuyen ma sync -> async ---------- */
+  // fetch(...).html() phai thanh (await fetch(...)).html() — boc dung dau
+  // ngoac dong (dem ngoac, bo qua noi dung chuoi), nhu tools/dong_goi_nguon.py
+  function bocAwait(code, mau) {
+    var re = new RegExp('\\b' + mau + '\\s*\\(', 'g');
+    var ra = [];
+    var i = 0;
+    var m;
+    re.lastIndex = 0;
+    while ((m = re.exec(code))) {
+      if (m.index < i) continue;
+      ra.push(code.slice(i, m.index));
+      var j = re.lastIndex;
+      var sau = 1;
+      var trong = '';
+      while (j < code.length && sau) {
+        var c = code[j];
+        if (trong) {
+          if (c === '\\') j++;
+          else if (c === trong) trong = '';
+        } else if (c === "'" || c === '"' || c === '`') trong = c;
+        else if (c === '(') sau++;
+        else if (c === ')') sau--;
+        j++;
+      }
+      ra.push('(await ' + code.slice(m.index, j) + ')');
+      i = j;
+      re.lastIndex = j;
+    }
+    ra.push(code.slice(i));
+    return ra.join('');
+  }
+
+  function bienDoi(code) {
+    code = code.replace(/\bfunction\s+execute\b/g, 'async function execute');
+    ['fetch', 'sleep', 'Http\\s*\\.\\s*get', 'Http\\s*\\.\\s*post']
+      .forEach(function (t) { code = bocAwait(code, t); });
+    return code;
+  }
+
+  function inlineLoad(code, files, daVao) {
+    daVao = daVao || {};
+    return code.replace(/load\(\s*['"]([^'"]+)['"]\s*\)\s*;?/g, function (m, ten) {
+      ten = ten.split('/').pop();
+      if (daVao[ten]) return '';
+      daVao[ten] = 1;
+      return '\n' + inlineLoad(files[ten] || '', files, daVao) + '\n';
+    });
+  }
+
+  var CAM = ['Engine.', 'WebSocket(', 'Graphics.', 'Qt.'];
+
+  // unzipFn: ham giai nen cua app (nhan ArrayBuffer, tra {ten, doc})
+  async function caiTuZip(buf, tenFile, unzipFn) {
+    var z = await unzipFn(buf);
+    var td = new TextDecoder();
+    var pjRaw = await z.doc('plugin.json');
+    if (!pjRaw) throw new Error('file không có plugin.json — không phải extension VBook');
+    var pj = JSON.parse(td.decode(pjRaw));
+    var meta = pj.metadata || {};
+    if (meta.encrypt) throw new Error('extension này bị mã hoá, không cài được');
+
+    var files = {};
+    for (var i = 0; i < z.ten.length; i++) {
+      var n = z.ten[i];
+      if (n.slice(-3) === '.js') files[n.split('/').pop()] = td.decode(await z.doc(n));
+    }
+    for (var f in files) {
+      for (var k = 0; k < CAM.length; k++) {
+        if (files[f].indexOf(CAM[k]) >= 0) {
+          throw new Error('extension dùng API chưa hỗ trợ (' + CAM[k] + ') trong ' + f);
+        }
+      }
+    }
+    var map = {};
+    var sm = pj.script || {};
+    for (var vaiTro in sm) map[vaiTro] = String(sm[vaiTro]).split('/').pop();
+    var scripts = {};
+    for (var fname in files) {
+      if (fname !== 'config.js') scripts[fname] = bienDoi(inlineLoad(files[fname], files));
+    }
+    if (!scripts[map.search || 'search.js'] && !scripts[map.detail || 'detail.js']) {
+      throw new Error('extension thiếu script search/detail');
+    }
+    var cfg = {};
+    var pc = pj.config || {};
+    for (var ck in pc) cfg[ck] = (pc[ck] && pc[ck]['default']) || '';
+    var ten = meta.name || String(tenFile).replace(/\.zip$/i, '');
+    var id = 'ext-' + ten.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    return {
+      id: id, ten: ten, nguon: meta.source || '', regexp: meta.regexp || '',
+      map: map, config: cfg, scripts: scripts, caiThem: true, them: Date.now(),
+    };
+  }
+
+  return { chay: chay, Html: Html, fetch: vbFetch, tuyetDoi: tuyetDoi, caiTuZip: caiTuZip };
 })();

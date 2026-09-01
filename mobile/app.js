@@ -29,11 +29,12 @@ $('#htHuy').addEventListener('click', () => dongHopThoai(false));
 let idb = null;
 function moDb() {
   return new Promise((res, rej) => {
-    const rq = indexedDB.open('dcreader', 1);
+    const rq = indexedDB.open('dcreader', 2);
     rq.onupgradeneeded = () => {
       const db = rq.result;
-      db.createObjectStore('sach', { keyPath: 'id' });   // thong tin + muc luc + vi tri doc
-      db.createObjectStore('chuong');                     // key `${id}:${i}` -> {lines}
+      if (!db.objectStoreNames.contains('sach')) db.createObjectStore('sach', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('chuong')) db.createObjectStore('chuong');
+      if (!db.objectStoreNames.contains('nguon')) db.createObjectStore('nguon', { keyPath: 'id' });
     };
     rq.onsuccess = () => { idb = rq.result; res(idb); };
     rq.onerror = () => rej(rq.error);
@@ -668,6 +669,7 @@ function nguonTuExt(ext) {
   return {
     id: ext.id,
     ten: ext.ten,
+    regexp: ext.regexp || '',
     home: async () => ((await VB.chay(ext, (ext.map && ext.map.home) || 'home.js', [])).data || [])
       .map((t) => ({ title: t.title, script: (t.script || '').split('/').pop(), input: t.input || '' })),
     list: async (script, input, page) => {
@@ -701,6 +703,39 @@ function nguonTuExt(ext) {
   };
 }
 (window.NGUON_VBOOK || []).forEach((ext) => { NGUON[ext.id] = nguonTuExt(ext); });
+
+/* ---- bật/tắt + cài thêm nguồn (người dùng tự quản) ---- */
+function dsNguonTat() {
+  try { return JSON.parse(localStorage.getItem('nguonTat') || '[]'); } catch (e) { return []; }
+}
+const nguonBiTat = (id) => dsNguonTat().includes(id);
+function datNguonTat(id, tat) {
+  const ds = dsNguonTat().filter((x) => x !== id);
+  if (tat) ds.push(id);
+  try { localStorage.setItem('nguonTat', JSON.stringify(ds)); } catch (e) { /**/ }
+}
+
+async function napNguonCai() {
+  // nguon nguoi dung cai them nam trong IndexedDB, nap de len bo co san neu trung id
+  const ds = await db('nguon', 'readonly', (s) => s.getAll()) || [];
+  ds.forEach((ext) => { NGUON[ext.id] = nguonTuExt(ext); NGUON[ext.id].caiThem = true; });
+}
+
+async function caiNguon(buf, tenFile) {
+  const ext = await VB.caiTuZip(buf, tenFile, unzip);
+  await db('nguon', 'readwrite', (s) => s.put(ext));
+  NGUON[ext.id] = nguonTuExt(ext);
+  NGUON[ext.id].caiThem = true;
+  return ext;
+}
+
+async function xoaNguon(id) {
+  await db('nguon', 'readwrite', (s) => s.delete(id));
+  delete NGUON[id];
+  // neu trung id voi nguon co san thi tra lai ban co san
+  const goc = (window.NGUON_VBOOK || []).find((e) => e.id === id);
+  if (goc) NGUON[id] = nguonTuExt(goc);
+}
 
 /* ---- Nguồn chung: bộ dò tự đoán cấu trúc trang — đặc sản nhà trồng.
    Port từ plugins/generic.py của bản PC: dán link trang truyện bất kỳ,
@@ -897,7 +932,9 @@ const TIM = { nguon: '', script: '', input: '', page: '', next: '', tuKhoa: '', 
 
 $('#btTim').addEventListener('click', () => {
   $('#manTim').classList.remove('hidden');
-  if (!TIM.nguon) chonNguon(Object.keys(NGUON)[0]);
+  const hien = dsNguonHien();
+  if ((!TIM.nguon || nguonBiTat(TIM.nguon)) && hien.length) chonNguon(hien[0].id);
+  else if (!hien.length) { veNguonChips(); baoTim('Bạn đã tắt hết nguồn — bấm ⚙ để bật lại, hoặc dán link bất kỳ.', false); }
 });
 $('#tDong').addEventListener('click', () => $('#manTim').classList.add('hidden'));
 $('#tTim').addEventListener('click', () => timNguon());
@@ -910,10 +947,14 @@ function baoTim(msg, err) {
   el.classList.toggle('hidden', !msg);
 }
 
+const dsNguonHien = () => Object.values(NGUON).filter((n) => !n.an && !nguonBiTat(n.id));
+
 function veNguonChips() {
-  $('#tNguon').innerHTML = Object.values(NGUON).filter((n) => !n.an).map((n) =>
-    `<button data-n="${n.id}" class="${n.id === TIM.nguon ? 'on' : ''}">${esc(n.ten)}</button>`).join('');
-  $$('#tNguon button').forEach((b) => b.addEventListener('click', () => chonNguon(b.dataset.n)));
+  $('#tNguon').innerHTML = dsNguonHien().map((n) =>
+    `<button data-n="${n.id}" class="${n.id === TIM.nguon ? 'on' : ''}">${esc(n.ten)}</button>`).join('')
+    + '<button id="tQuanLy" title="Quản lý nguồn">⚙</button>';
+  $$('#tNguon [data-n]').forEach((b) => b.addEventListener('click', () => chonNguon(b.dataset.n)));
+  $('#tQuanLy').addEventListener('click', moQuanLyNguon);
 }
 
 async function chonNguon(id) {
@@ -996,13 +1037,78 @@ function veKetQua() {
 
 $('#tThem').addEventListener('click', () => napTrang(false));
 
+/* ---------- quản lý nguồn ---------- */
+function moQuanLyNguon() {
+  veQlDs();
+  $('#qlBao').textContent = '';
+  $('#manNguon').classList.remove('hidden');
+}
+
+function veQlDs() {
+  const ds = Object.values(NGUON).filter((n) => n.id !== 'chung');
+  $('#qlDs').innerHTML = ds.map((n) => `
+    <div class="ql-nguon">
+      <label class="ql-bat">
+        <input type="checkbox" data-bat="${n.id}" ${nguonBiTat(n.id) ? '' : 'checked'}>
+        <span><b>${esc(n.ten)}</b>
+          <small>${n.caiThem ? 'tự cài thêm' : (n.id === 'blhvip' ? 'có sẵn' : 'có sẵn (VBook)')}</small></span>
+      </label>
+      ${n.caiThem ? `<button class="ql-xoa" data-goNguon="${n.id}">Xoá</button>` : ''}
+    </div>`).join('')
+    + `<div class="ql-nguon"><label class="ql-bat"><input type="checkbox" checked disabled>
+       <span><b>Bộ dò tự đoán (dán link)</b><small>luôn bật — lo mọi trang không có nguồn riêng</small></span></label></div>`;
+  $$('#qlDs [data-bat]').forEach((c) => c.addEventListener('change', () => {
+    datNguonTat(c.dataset.bat, !c.checked);
+    veNguonChips();
+  }));
+  $$('#qlDs [data-goNguon]').forEach((b) => b.addEventListener('click', async () => {
+    const id = b.dataset.goNguon;
+    if (!await hoi(`Xoá nguồn "${(NGUON[id] || {}).ten || id}" khỏi app?`)) return;
+    await xoaNguon(id);
+    if (TIM.nguon === id) TIM.nguon = '';
+    veQlDs();
+    veNguonChips();
+  }));
+}
+
+async function qlCai(buf, tenFile) {
+  $('#qlBao').textContent = 'Đang cài ' + tenFile + '…';
+  try {
+    const ext = await caiNguon(buf, tenFile);
+    datNguonTat(ext.id, false);
+    $('#qlBao').textContent = `Đã cài nguồn "${ext.ten}" ✓`;
+    veQlDs();
+    veNguonChips();
+  } catch (e) { $('#qlBao').textContent = 'Không cài được: ' + e.message; }
+}
+
+$('#qlDong').addEventListener('click', () => $('#manNguon').classList.add('hidden'));
+$('#qlChonFile').addEventListener('click', () => $('#qlFile').click());
+$('#qlFile').addEventListener('change', async () => {
+  const f = $('#qlFile').files[0];
+  $('#qlFile').value = '';
+  if (f) qlCai(await f.arrayBuffer(), f.name);
+});
+$('#qlCaiUrl').addEventListener('click', async () => {
+  const u = $('#qlUrl').value.trim();
+  if (!u) return;
+  $('#qlBao').textContent = 'Đang tải file…';
+  try {
+    const dich = PROXY ? PROXY + encodeURIComponent(u) : u;
+    const r = await fetch(dich);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    await qlCai(await r.arrayBuffer(), u.split('/').pop() || 'nguon.zip');
+    $('#qlUrl').value = '';
+  } catch (e) { $('#qlBao').textContent = 'Không tải được file: ' + e.message; }
+});
+
 async function moChiTietLink(link) {
   // dan link: nguon nao nhan ra thi dung nguon do, khong thi BO DO TU DOAN lo
   let id = '';
-  for (const ext of (window.NGUON_VBOOK || [])) {
-    try { if (ext.regexp && new RegExp(ext.regexp).test(link)) { id = ext.id; break; } } catch (e) { /**/ }
+  for (const n of Object.values(NGUON)) {
+    const rx = n.regexp || (n.id === 'blhvip' ? 'blhvip\\.vn' : '');
+    try { if (rx && !nguonBiTat(n.id) && new RegExp(rx).test(link)) { id = n.id; break; } } catch (e) { /**/ }
   }
-  if (/blhvip\.vn/.test(link)) id = 'blhvip';
   if (!id) id = 'chung';
   baoTim('Đang đọc trang truyện…' + (id === 'chung' ? ' (bộ dò tự đoán cấu trúc)' : ''));
   try {
@@ -1169,9 +1275,25 @@ async function capNhatTruyen(id) {
 }
 
 /* ================= khởi động ================= */
+const PHIEN_BAN = 'v4 · quản lý nguồn';
+try { $('#pbApp').textContent = PHIEN_BAN; } catch (e) { /**/ }
+
+// Trong APK (Capacitor phuc vu qua https://localhost) file da nam san trong may,
+// service worker chi gay hai: ban cu cache-first tung giu giao dien cu sau khi
+// cap nhat app. -> APK: go SW + xoa cache; PWA/web: van dang ky nhu thuong.
+const TRONG_APK = location.protocol === 'https:' && location.hostname === 'localhost';
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => { /* mo tu file:// thi thoi */ });
+  if (TRONG_APK) {
+    navigator.serviceWorker.getRegistrations()
+      .then((rs) => rs.forEach((r) => r.unregister())).catch(() => { });
+    if (window.caches) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => { });
+  } else {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* mo tu file:// thi thoi */ });
+  }
 }
-moDb().then(veKho).catch((e) => {
-  $('#khoRong').textContent = 'Không mở được kho lưu của trình duyệt: ' + e;
-});
+moDb()
+  .then(() => napNguonCai().catch(() => { /* khong co nguon cai them cung chay tiep */ }))
+  .then(veKho)
+  .catch((e) => {
+    $('#khoRong').textContent = 'Không mở được kho lưu của trình duyệt: ' + e;
+  });

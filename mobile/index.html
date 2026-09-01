@@ -18,7 +18,7 @@
     <img class="logo" src="icon-192.png" alt="">
     <div class="brand-chu">
       <h1>DCReader</h1>
-      <p class="sub">Truyện nằm trong máy · đọc không cần mạng</p>
+      <p class="sub">Truyện nằm trong máy · đọc không cần mạng · <span id="pbApp"></span></p>
     </div>
     <button class="ghost" id="btTim">🔍 Tìm</button>
     <button class="primary" id="btNhap">＋ Nhập</button>
@@ -123,6 +123,30 @@ mỗi chương tự tải khi mở tới (cần mạng). «Tải cả truyện»
     <span id="rViTri" class="muted"></span>
     <button id="rSau">→</button>
   </footer>
+</div>
+
+<!-- ============ QUẢN LÝ NGUỒN ============ -->
+<div id="manNguon" class="modal hidden">
+  <div class="modal-box ql-box">
+    <h3 style="margin:0">Quản lý nguồn truyện</h3>
+    <div id="qlDs" class="ql-ds"></div>
+    <div class="ql-them">
+      <b>＋ Cài nguồn mới</b>
+      <p class="ql-hint">Nhận file <b>plugin.zip</b> định dạng extension VBook — lấy trong kho
+<span style="user-select:all">github.com/Darkrai9x/vbook-extensions</span> (vào thư mục nguồn muốn cài,
+tải file plugin.zip về), hoặc dán thẳng link tới file .zip.</p>
+      <input id="qlFile" type="file" accept=".zip" hidden>
+      <div class="ql-hang">
+        <button id="qlChonFile">Chọn file .zip</button>
+        <input id="qlUrl" type="text" placeholder="…hoặc dán link plugin.zip">
+        <button class="primary" id="qlCaiUrl">Cài</button>
+      </div>
+      <p id="qlBao" class="ql-hint" style="min-height:1.2em"></p>
+    </div>
+    <div class="modal-acts">
+      <button class="primary" id="qlDong">Xong</button>
+    </div>
+  </div>
 </div>
 
 <!-- ============ HỘP THOẠI ============ -->
