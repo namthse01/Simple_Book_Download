@@ -21,6 +21,7 @@ APP_TEN = "DCR - DragonCloud_reading"
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
+from core import ai                                       # noqa: E402
 from core import store                                    # noqa: E402
 from core.downloader import Manager                       # noqa: E402
 from core.net import Http                                 # noqa: E402
@@ -124,8 +125,7 @@ def run_desktop(port: int) -> int:
         # ham nay chay sau khi vong lap GUI khoi dong -> luc do moi co cua so
         webview.start(_gan_icon_cua_so)          # chan cho den khi dong cua so
     finally:
-        httpd.shutdown()
-        httpd.server_close()
+        _don_sach(httpd)
     return 0
 
 
@@ -149,8 +149,45 @@ def run_web(port: int, open_browser: bool) -> int:
     except KeyboardInterrupt:
         print("\nDa tat.")
     finally:
-        httpd.server_close()
+        _don_sach(httpd)
     return 0
+
+
+def _don_sach(httpd) -> None:
+    """Dong app la dong het: khong de thu gi chay ngam an RAM.
+
+    - May chu noi bo: dung han (cac luong phuc vu deu la daemon nen tu chet).
+    - Ollama: chi tat neu CHINH APP bat no len — Ollama nguoi dung tu mo thi de yen.
+      Model ngon vai GB RAM/VRAM nen bo quen la thay may nang ngay.
+    - Viec xay the gioi dang chay do bi cat giua chung: khong mat gi, lan sau
+      bam Khoi tao la chay tiep tu lo da phan tich xong.
+    """
+    try:
+        httpd.shutdown()
+    except Exception:
+        pass
+    try:
+        httpd.server_close()
+    except Exception:
+        pass
+    try:
+        # dung tai truyen dang do: cac luong cua ThreadPoolExecutor khong phai
+        # daemon nen khong dung thi Python se doi tai xong het moi cho thoat
+        from core import server as _sv
+        if _sv.APP is not None:
+            _sv.APP.manager.dung_het()
+    except Exception:
+        pass
+    try:
+        from core import world as _w
+        for _b in list(_w._builds.values()):        # xay the gioi dang chay
+            _b.cancel.set()
+    except Exception:
+        pass
+    try:
+        ai.dong_ollama()
+    except Exception:
+        pass
 
 
 def run_cli(args) -> int:

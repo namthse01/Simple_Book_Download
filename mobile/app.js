@@ -526,8 +526,10 @@ const blhSlug = (url) => {
   return m ? m[1] : '';
 };
 
-async function blhTim(tuKhoa) {
-  const d = await taiVe(`${API_BLH}/v1/search?keyword=${encodeURIComponent(tuKhoa)}&page=1`, 'json');
+async function blhTim(tuKhoa, page) {
+  // API doi tham so tu keyword= sang q= (giu keyword thi tra list mac dinh!)
+  const n = Math.max(1, Number(page) || 1);
+  const d = await taiVe(`${API_BLH}/v1/search?q=${encodeURIComponent(tuKhoa)}&page=${n}`, 'json');
   return (d.data || []).filter((x) => x.slug).map((x) => ({
     ten: x.name || x.slug, slug: x.slug, tacGia: x.author_name || '',
     bia: x.img_url || '', soChuong: x.chapter_count || 0,
@@ -585,7 +587,8 @@ const NGUON = {};        // id -> {id, ten, home, list, search, detail, toc, cha
 // ---- BLHVIP: adapter viết tay (API riêng của trang) ----
 function blhParseList(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const laTenXau = (s) => !s || s === 'FULL' || /\.(jpe?g|png|webp|gif)$/i.test(s);
+  const laTenXau = (s) => !s || s === 'FULL' || /\.(jpe?g|png|webp|gif)$/i.test(s)
+    || s.includes('/') || /^https?:/.test(s);
   const seen = new Map();
   doc.querySelectorAll('a[href]').forEach((a) => {
     const m = (a.getAttribute('href') || '').match(/^(?:https:\/\/blhvip\.vn\/|\/)?truyen\/([a-z0-9-]+)\/?$/);
@@ -624,17 +627,24 @@ NGUON.blhvip = {
     { title: 'Hoàn thành', script: '', input: 'truyen-hoan-thanh' },
     { title: 'Thịnh hành tuần', script: '', input: 'truyen-thinh-hanh-trong-tuan' },
   ],
-  list: async (script, input) => ({
-    items: blhParseList(await taiVe(SITE_BLH + '/' + (input || ''), 'text')),
-    next: '',
-  }),
-  search: async (kw) => ({
-    items: (await blhTim(kw)).map((x) => ({
-      ten: x.ten, link: `${SITE_BLH}/truyen/${x.slug}`, bia: x.bia,
-      moTa: [x.tacGia, x.soChuong ? x.soChuong + ' chương' : ''].filter(Boolean).join(' · '),
-    })),
-    next: '',
-  }),
+  list: async (script, input, page) => {
+    const n = Math.max(1, Number(page) || 1);
+    const items = blhParseList(await taiVe(
+      SITE_BLH + '/' + (input || '') + (input ? '?page=' + n : ''), 'text'));
+    // trang chu (De cu) khong phan trang; cac muc con lai cu ?page=N ma cuon
+    return { items, next: input && items.length ? String(n + 1) : '' };
+  },
+  search: async (kw, page) => {
+    const n = Math.max(1, Number(page) || 1);
+    const ds = await blhTim(kw, n);
+    return {
+      items: ds.map((x) => ({
+        ten: x.ten, link: `${SITE_BLH}/truyen/${x.slug}`, bia: x.bia,
+        moTa: [x.tacGia, x.soChuong ? x.soChuong + ' chương' : ''].filter(Boolean).join(' · '),
+      })),
+      next: ds.length ? String(n + 1) : '',
+    };
+  },
   detail: async (link) => {
     const doc = new DOMParser().parseFromString(await taiVe(link, 'text'), 'text/html');
     let ten = chuan((doc.querySelector('title') || {}).textContent || '');
@@ -1005,37 +1015,64 @@ async function timNguon() {
 
 async function napTrang(moi) {
   const n = NGUON[TIM.nguon];
-  if (!n) return;
+  if (!n || TIM.dang) return;
+  TIM.dang = true;
   baoTim(moi ? 'Đang tải danh sách…' : '');
-  $('#tThem').disabled = true;
+  const nut = $('#tThem');
+  nut.disabled = true;
+  nut.textContent = 'Đang tải thêm…';
   try {
     const kq = TIM.tuKhoa
       ? await n.search(TIM.tuKhoa, TIM.page)
       : await n.list(TIM.script, TIM.input, TIM.page);
-    TIM.items = moi ? kq.items : TIM.items.concat(kq.items);
-    TIM.next = kq.next || '';
+    if (moi) {
+      TIM.items = kq.items;
+      TIM.next = kq.next || '';
+      veKetQua(0);
+    } else {
+      // bo trung (co trang lap lai y het -> coi nhu het truyen de cuon)
+      const daCo = new Set(TIM.items.map((x) => x.link));
+      const them = kq.items.filter((x) => !daCo.has(x.link));
+      const tu = TIM.items.length;
+      TIM.items = TIM.items.concat(them);
+      TIM.next = (kq.next && them.length) ? kq.next : '';
+      veKetQua(tu);
+    }
     TIM.page = TIM.next;
     baoTim(TIM.items.length ? '' : 'Không có truyện nào ở mục này.');
-    veKetQua();
   } catch (e) { baoTim('Lỗi: ' + e.message, true); }
-  $('#tThem').disabled = false;
+  nut.disabled = false;
+  nut.textContent = 'Tải thêm ↓';
+  $('#tThem').classList.toggle('hidden', !TIM.next);
+  TIM.dang = false;
 }
 
-function veKetQua() {
-  $('#tKetQua').innerHTML = TIM.items.map((x, i) => `
-    <div class="the" data-i="${i}">
-      <div class="bia">${x.bia ? `<img loading="lazy" src="${esc(x.bia)}" alt="" onerror="this.remove()">` : '📖'}</div>
-      <div class="giua">
-        <div class="t">${esc(x.ten)}</div>
-        <div class="a">${esc(x.moTa || '')}</div>
-      </div>
-    </div>`).join('');
-  $$('#tKetQua .the').forEach((el) => el.addEventListener('click',
+function veKetQua(tu) {
+  const ve = (x, i) => `
+    <div class="poster" data-i="${i}">
+      <div class="p-bia">${x.bia ? `<img loading="lazy" referrerpolicy="no-referrer" src="${esc(x.bia)}" alt="" onerror="this.parentElement.textContent='📖'">` : '📖'}</div>
+      <div class="p-ten">${esc(x.ten)}</div>
+    </div>`;
+  const hop = $('#tKetQua');
+  hop.classList.add('luoi');
+  if (!tu) hop.innerHTML = TIM.items.map(ve).join('');
+  else hop.insertAdjacentHTML('beforeend', TIM.items.slice(tu).map((x, k) => ve(x, tu + k)).join(''));
+  // chi gan nghe cho phan moi ve, khoi gan trung
+  $$('#tKetQua .poster').slice(tu || 0).forEach((el) => el.addEventListener('click',
     () => moChiTietLink(TIM.items[Number(el.dataset.i)].link)));
   $('#tThem').classList.toggle('hidden', !TIM.next);
 }
 
 $('#tThem').addEventListener('click', () => napTrang(false));
+
+// doom scrolling: cuon gan cham day la tu nap trang tiep, khoi phai bam nut
+$('#manTim').addEventListener('scroll', () => {
+  const m = $('#manTim');
+  if (TIM.next && !TIM.dang
+    && m.scrollTop + m.clientHeight > m.scrollHeight - 900) {
+    napTrang(false);
+  }
+}, { passive: true });
 
 /* ---------- quản lý nguồn ---------- */
 function moQuanLyNguon() {
@@ -1275,7 +1312,7 @@ async function capNhatTruyen(id) {
 }
 
 /* ================= khởi động ================= */
-const PHIEN_BAN = 'v4 · quản lý nguồn';
+const PHIEN_BAN = 'v6 · tìm chuẩn';
 try { $('#pbApp').textContent = PHIEN_BAN; } catch (e) { /**/ }
 
 // Trong APK (Capacitor phuc vu qua https://localhost) file da nam san trong may,

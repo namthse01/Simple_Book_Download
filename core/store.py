@@ -23,6 +23,27 @@ DEFAULT_SETTINGS = {
     "split_every": 0,      # >0 = tach thanh nhieu tap, moi tap bay nhieu chuong
     "port": 8765,
     "lan": False,          # True = thiet bi khac trong mang (dien thoai) vao duoc
+    # nhap vai AI ("Tham nhap the gioi") — noi chuan OpenAI, mac dinh Ollama local
+    "ai": {
+        "base_url": "http://127.0.0.1:11434/v1",
+        "api_key": "",
+        "model": "",
+        "temperature": 0.8,
+        "max_tokens": 3000,
+        "timeout": 600,        # giay cho moi lan goi AI
+        "chunk_chars": 20000,  # so ky tu moi lo chuong dua cho AI phan tich
+        "num_ctx": 24576,      # cua so ngu canh khi goi Ollama (token)
+        "trau_chuot": False,   # goi AI lan 2 moi chuong de bien tap cau van
+    },
+    # ---- doc bao ----
+    "bao_ngon_ngu": "vi",       # dich bao sang: vi | zh | en ("goc" = khong dich)
+    "bao_dich_tom_tat": True,   # dich ca doan tom tat chu khong chi tieu de
+    "bao_tu_dich": False,       # mo muc nao thi tu dich muc do
+    "bao_quoc_tat": [],         # ma cac nuoc tam tat khi cap nhat
+    # bo dich muon tu du an DichVanNang (tu dien VietPhrase + Ollama)
+    "dich_thu_muc": r"D:\Code\DichVanNang",
+    "bao_ai_url": "",           # de trong = theo cau hinh cua DichVanNang
+    "bao_ai_model": "",
 }
 
 DEFAULT_FILTERS = {"remove": [], "drop_line": [], "regex": [], "names": {}}
@@ -49,6 +70,10 @@ def load_settings() -> dict:
     s = _read(DATA / "settings.json", DEFAULT_SETTINGS)
     s["threads"] = max(1, min(32, int(s.get("threads", 6))))
     s["delay"] = max(0.0, float(s.get("delay", 0.4)))
+    # "ai" la dict long nhau: file cu/thieu khoa thi lay mac dinh cho tung khoa
+    ai = dict(DEFAULT_SETTINGS["ai"])
+    ai.update(s.get("ai") if isinstance(s.get("ai"), dict) else {})
+    s["ai"] = ai
     return s
 
 

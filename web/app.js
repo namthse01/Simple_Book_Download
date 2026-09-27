@@ -58,6 +58,7 @@ $$('.tab').forEach((b) => b.addEventListener('click', () => {
   $('#tab-' + b.dataset.tab).classList.add('on');
   if (b.dataset.tab === 'kho') napKho();
   if (b.dataset.tab === 'cai') napCaiDat();
+  if (b.dataset.tab === 'bao') moTabBao();
 }));
 
 /* ================= tìm truyện ================= */
@@ -91,17 +92,27 @@ async function tim() {
   } catch (e) { bao('Lỗi tìm kiếm: ' + e.message, 'err'); }
 }
 
+/* chữ cái đầu của tên truyện — hiện to mờ trên bìa khi không có ảnh */
+function chuDau(ten) {
+  return String(ten || '?').trim().split(/\s+/).slice(0, 2)
+    .map((t) => t.charAt(0).toUpperCase()).join('');
+}
+
 function veKetQua(list) {
   $('#ketQua').innerHTML = list.map((b) => `
-    <div class="card-book" data-url="${esc(b.url)}">
-      <img loading="lazy" src="${esc(b.cover)}" alt="" onerror="this.style.visibility='hidden'">
-      <div>
+    <div class="pcard" data-url="${esc(b.url)}" title="${esc(b.title)}">
+      <div class="pcover">
+        <span class="pchu">${esc(chuDau(b.title))}</span>
+        ${b.cover ? `<img loading="lazy" referrerpolicy="no-referrer"
+          src="${esc(b.cover)}" alt="" onerror="this.remove()">` : ''}
+      </div>
+      <div class="pinfo">
         <div class="t">${esc(b.title)}</div>
         ${b.author ? `<div class="a">${esc(b.author)}</div>` : ''}
         ${b.latest ? `<div class="s">${esc(b.latest)}</div>` : ''}
       </div>
     </div>`).join('');
-  $$('#ketQua .card-book').forEach((c) =>
+  $$('#ketQua .pcard').forEach((c) =>
     c.addEventListener('click', () => moTruyen(c.dataset.url)));
 }
 
@@ -231,28 +242,45 @@ async function napKho() {
     $('#khoDocTiep').innerHTML = gn
       ? `<button class="primary big" id="btDocTiep">▶ Đọc tiếp: ${esc(gn.title)}</button>` : '';
     if (gn) $('#btDocTiep').addEventListener('click', () => moDoc(gn.url));
-    $('#dsKho').innerHTML = d.thu_vien.length ? d.thu_vien.map((b) => `
-      <div class="card-lib">
-        <div class="main" data-doc="${esc(b.url)}" title="Bấm để đọc">
-          <img loading="lazy" src="${esc(b.cover)}" alt="" onerror="this.style.visibility='hidden'">
-          <div>
-            <div class="t">${esc(b.title)}</div>
-            <div class="a">${esc(b.author || '')}</div>
-            <div class="s">${b.chapters} chương · ${(b.files || []).length} file</div>
+    $('#dsKho').innerHTML = d.thu_vien.length ? d.thu_vien.map((b) => {
+      let pct = 0;
+      try {
+        const i = Number(localStorage.getItem('doc:' + b.url)) || 0;
+        pct = i && b.chapters ? Math.min(100, Math.round(i * 100 / b.chapters)) : 0;
+      } catch (e) { /**/ }
+      return `
+      <div class="pcard" data-sach="${esc(b.url)}" title="${esc(b.title)}">
+        <div class="pcover">
+          <span class="pchu">${esc(chuDau(b.title))}</span>
+          ${b.cover ? `<img loading="lazy" src="${esc(b.cover)}" alt="" onerror="this.remove()">` : ''}
+          ${pct ? `<div class="ptien"><i style="width:${pct}%"></i></div>` : ''}
+          <div class="pacts">
+            <button data-doc="${esc(b.url)}" title="Mở đọc ngay chỗ đang dở">▶ Đọc</button>
+            <button class="ptham" data-tham="${esc(b.url)}" data-ten="${esc(b.title)}"
+              title="Thâm nhập — nhập vai vào thế giới truyện">⚔</button>
           </div>
         </div>
-        <div class="acts">
-          <button data-doc="${esc(b.url)}">Đọc</button>
-          <button data-mo="${esc(b.folder)}">Thư mục</button>
-          <button class="del" data-xoa="${esc(b.url)}" data-ten="${esc(b.title)}">Xoá</button>
+        <div class="pinfo">
+          <div class="t">${esc(b.title)}</div>
+          <div class="a">${esc(b.author || '')}</div>
+          <div class="s">${b.chapters} chương${pct ? ` · đã đọc ${pct}%` : ''}</div>
         </div>
-      </div>`).join('') : '<div class="empty">Chưa tải truyện nào.</div>';
-    $$('#dsKho [data-doc]').forEach((c) => c.addEventListener('click',
-      () => moManTruyen(c.dataset.doc)));
-    $$('#dsKho [data-mo]').forEach((c) => c.addEventListener('click', () =>
-      api('/api/open', { duong_dan: c.dataset.mo }).catch(() => { })));
-    $$('#dsKho [data-xoa]').forEach((c) => c.addEventListener('click',
-      () => xoaTruyen(c.dataset.xoa, c.dataset.ten)));
+      </div>`;
+    }).join('') : '<div class="empty">Chưa tải truyện nào — sang tab Tìm truyện, hoặc bấm ＋ Nhập tài liệu.</div>';
+    // bấm thẻ -> màn truyện (chọn chương, cập nhật, thư mục, xoá đều ở đó);
+    // hai nút trên bìa đi thẳng: Đọc tiếp / Thâm nhập thế giới
+    $$('#dsKho .pcard').forEach((c) => c.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      moManTruyen(c.dataset.sach);
+    }));
+    $$('#dsKho [data-doc]').forEach((b) => b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      moDoc(b.dataset.doc);
+    }));
+    $$('#dsKho [data-tham]').forEach((b) => b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      moTheGioi(b.dataset.tham, b.dataset.ten);
+    }));
   } catch (e) { $('#dsKho').innerHTML = '<div class="empty">Lỗi: ' + esc(e.message) + '</div>'; }
 }
 
@@ -414,6 +442,15 @@ async function napCaiDat() {
     $('#fRemove').value = (f.remove || []).join('\n');
     $('#fDrop').value = (f.drop_line || []).join('\n');
     $('#fNames').value = Object.entries(f.names || {}).map(([k, v]) => `${k} = ${v}`).join('\n');
+    const ai = c.ai || {};
+    $('#aiUrl').value = ai.base_url || '';
+    $('#aiKey').value = ai.api_key || '';
+    $('#aiModel').value = ai.model || '';
+    $('#aiNhiet').value = ai.temperature != null ? ai.temperature : 0.8;
+    $('#aiTimeout').value = ai.timeout || 600;
+    $('#aiChunk').value = ai.chunk_chars || 20000;
+    $('#aiCtx').value = ai.num_ctx || 24576;
+    $('#aiTrauChuot').checked = !!ai.trau_chuot;
   } catch (e) { console.error(e); }
 }
 
@@ -435,6 +472,17 @@ $('#btLuu').addEventListener('click', async () => {
         proxy: $('#sProxy').value.trim(),
         auto_clean: $('#sTuLoc').checked,
         lan: $('#sLan').checked,
+        ai: {
+          base_url: $('#aiUrl').value.trim(),
+          api_key: $('#aiKey').value.trim(),
+          model: $('#aiModel').value.trim(),
+          temperature: Number($('#aiNhiet').value) || 0.8,
+          max_tokens: 3000,
+          timeout: Number($('#aiTimeout').value) || 600,
+          chunk_chars: Number($('#aiChunk').value) || 20000,
+          num_ctx: Number($('#aiCtx').value) || 24576,
+          trau_chuot: $('#aiTrauChuot').checked,
+        },
       },
       bo_loc: { remove: dong('#fRemove'), drop_line: dong('#fDrop'), regex: [], names },
     });
@@ -638,7 +686,7 @@ $('#rMucLuc').addEventListener('click', () => $('#rDsChuong').classList.toggle('
 
 document.addEventListener('keydown', (e) => {
   if ($('#docTruyen').classList.contains('hidden')) return;
-  if (e.target.matches('input, textarea, select')) return;
+  if (e.target.matches && e.target.matches('input, textarea, select')) return;
   if (e.key === 'ArrowLeft') doChuong(DOC.i - 1);
   else if (e.key === 'ArrowRight') doChuong(DOC.i + 1);
   else if (e.key === 'Escape') $('#docTruyen').classList.add('hidden');
@@ -708,6 +756,424 @@ $('#mtXoa').addEventListener('click', async () => {
   if (!(await api('/api/library')).thu_vien.some((x) => x.url === KHO.url)) {
     $('#manTruyen').classList.add('hidden');
   }
+});
+
+/* ================= thâm nhập thế giới ================= */
+const TG = { url: '', ten: '', trangThai: '', hen: 0 };
+const enc = encodeURIComponent;
+
+const TEN_MUC = {
+  tong_quan: 'Tổng quan thế giới',
+  lich_su: 'Lịch sử: thời đại, chiến tranh, nguyên nhân – hậu quả',
+  ban_do: 'Cấu trúc & bản đồ: quốc gia, khu vực, khoảng cách',
+  the_gioi_song: 'Thời gian & môi trường: mùa, thời tiết, sinh thái',
+  nhan_vat: 'Nhân vật & quy tắc sinh NPC',
+  phe_phai: 'Phe phái & chính trị',
+  van_hoa: 'Văn hoá & kinh tế',
+  quy_luat: 'Quy luật thế giới: ma pháp, nhân quả, cái chết',
+  gioi_han: 'Giới hạn & hệ thống sức mạnh',
+  khu_vuc: 'Khu vực & sự kiện theo độ hiếm',
+  bi_an: '🔒 Bí mật — xem sẽ spoil!',
+};
+
+function tgView(id) {
+  ['tgChuaCo', 'tgDangXay', 'tgLoi', 'tgSanSang', 'tgTaoNV'].forEach((v) =>
+    $('#' + v).classList.toggle('hidden', v !== id));
+}
+
+async function moTheGioi(url, ten) {
+  TG.url = url;
+  TG.ten = ten || '';
+  $('#tgTen').textContent = TG.ten;
+  $('#manTheGioi').classList.remove('hidden');
+  tgView('');
+  await tgNap();
+}
+
+async function tgNap() {
+  let d;
+  try { d = await api('/api/world/status?url=' + enc(TG.url)); }
+  catch (e) {
+    tgView('tgLoi');
+    $('#tgLoiMsg').textContent = e.message;
+    return;
+  }
+  TG.trangThai = d.status || '';
+  $('#tgTinhTrang').textContent = TG.trangThai ? 'Truyện: ' + TG.trangThai : '';
+
+  if (d.build && d.build.status === 'dang chay') {
+    veXay(d.build);
+    batDauHen();
+    return;
+  }
+  if (d.world && (d.sections_done || []).length >= (d.sections_total || 7)) {
+    veSanSang(d);
+    return;
+  }
+  if (d.build && d.build.status === 'loi') {
+    tgView('tgLoi');
+    $('#tgLoiMsg').textContent = 'Kiến tạo thế giới bị lỗi:\n\n' + d.build.message;
+    return;
+  }
+
+  // chưa có thế giới (hoặc mới xong một phần do dừng giữa chừng)
+  tgView('tgChuaCo');
+  const daPhan = d.world || (d.build && d.build.status === 'da huy');
+  $('#tgXayNut').textContent = daPhan ? 'Khởi tạo tiếp (giữ phần đã phân tích)' : 'Khởi tạo thế giới';
+  const cb = $('#tgCanhBao');
+  const hoanThanh = /hoàn thành|hoàn tất|full|đã đủ/i.test(TG.trangThai);
+  if (TG.trangThai && !hoanThanh) {
+    cb.className = 'notice err';
+    cb.textContent = '⚠ Truyện này CHƯA hoàn thành (' + TG.trangThai + '). Thế giới dựng ra '
+      + 'sẽ thiếu phần kết và các bí ẩn chưa được tác giả giải — vẫn chơi được, nhưng '
+      + 'truyện đã hoàn thành sẽ cho thế giới trọn vẹn hơn.';
+    cb.classList.remove('hidden');
+  } else if (!TG.trangThai) {
+    cb.className = 'notice';
+    cb.textContent = 'Không rõ truyện này đã hoàn thành chưa (sách nhập từ máy không có thông tin '
+      + 'trạng thái). Nếu truyện còn dang dở, thế giới sẽ thiếu phần kết — cân nhắc trước khi vào.';
+    cb.classList.remove('hidden');
+  } else cb.classList.add('hidden');
+  $('#tgAiHint').textContent = 'AI dùng máy chủ đã khai trong Cài đặt › Nhập vai AI. '
+    + 'Truyện dài + chế độ Đầy đủ có thể chạy hàng giờ với model trên máy — cứ để chạy nền, dừng lúc nào cũng được.';
+}
+
+function veXay(b) {
+  tgView('tgDangXay');
+  $('#tgBuoc').innerHTML = b.stages.map((s, i) => `
+    <li class="${i < b.stage_index ? 'xong' : i === b.stage_index ? 'dang' : ''}">${esc(s.ten)}${
+    i === b.stage_index && b.total > 1 ? ` — ${b.done}/${b.total}` : ''}</li>`).join('');
+  $('#tgBar').style.width = (b.total ? Math.round(b.done * 100 / b.total) : 0) + '%';
+  $('#tgMsg').textContent = b.message || '';
+}
+
+function batDauHen() {
+  if (!TG.hen) TG.hen = setInterval(tgTick, 2000);
+}
+
+function dungHen() {
+  clearInterval(TG.hen);
+  TG.hen = 0;
+}
+
+async function tgTick() {
+  if ($('#manTheGioi').classList.contains('hidden')) { dungHen(); return; }
+  try {
+    const d = await api('/api/world/status?url=' + enc(TG.url));
+    if (d.build && d.build.status === 'dang chay') { veXay(d.build); return; }
+    dungHen();
+    tgNap();
+  } catch (e) { /* mạng chớp nháy thì lần tới hỏi lại */ }
+}
+
+$('#tgDong').addEventListener('click', () => {
+  $('#manTheGioi').classList.add('hidden');
+  dungHen();
+});
+
+$('#tgXayNut').addEventListener('click', async () => {
+  const cheDo = (document.querySelector('input[name=tgCheDo]:checked') || {}).value || 'day_du';
+  $('#tgXayNut').disabled = true;
+  try {
+    await api('/api/world/build', { url: TG.url, che_do: cheDo });
+    tgNap();
+  } catch (e) { await nhac(e.message); }
+  $('#tgXayNut').disabled = false;
+});
+
+$('#tgThuLai').addEventListener('click', async () => {
+  try {
+    await api('/api/world/build', { url: TG.url });
+    tgNap();
+  } catch (e) { nhac(e.message); }
+});
+
+$('#tgHuyXay').addEventListener('click', () =>
+  api('/api/world/cancel', { url: TG.url }).then(tgNap).catch(() => { }));
+
+$('#tgXayLai').addEventListener('click', async () => {
+  const ok = await hoi('Phân tích lại TỪ ĐẦU sẽ xoá sổ tay thế giới cũ và toàn bộ ghi chú '
+    + 'phân tích (các phiên chơi vẫn được giữ).\n\nTruyện dài sẽ tốn khá nhiều thời gian. Làm lại?');
+  if (!ok) return;
+  try {
+    await api('/api/world/build', { url: TG.url, lam_lai: true });
+    tgNap();
+  } catch (e) { nhac(e.message); }
+});
+
+function veSanSang(d) {
+  tgView('tgSanSang');
+  const m = d.meta || {};
+  $('#tgMeta').textContent = `Sổ tay dựng từ ${m.chapters_total || '?'} chương`
+    + (m.model ? ` · model ${m.model}` : '') + (m.mode === 'nhanh' ? ' · chế độ nhanh' : '');
+  $('#tgSoTay').classList.add('hidden');
+  $('#tgSoTay').innerHTML = '';
+  vePhien(d.phien || []);
+}
+
+function vePhien(ds) {
+  const luc = (t) => t ? new Date(t * 1000).toLocaleString('vi') : '';
+  $('#tgDsPhien').innerHTML = ds.length ? ds.map((p) => `
+    <div class="phien-card">
+      <div class="t">${esc(p.ten)}</div>
+      <div class="d">${p.so_chuong} chương${p.vi_tri ? ' · ' + esc(p.vi_tri) : ''}<br>${esc(luc(p.updated))}</div>
+      <div class="acts">
+        <button class="primary" data-choi="${esc(p.id)}">▶ Chơi tiếp</button>
+        <button class="del" data-xoa-phien="${esc(p.id)}" data-ten="${esc(p.ten)}">Xoá</button>
+      </div>
+    </div>`).join('')
+    : '<div class="empty">Chưa có lần chơi nào — tạo nhân vật để bước vào thế giới.</div>';
+  $$('#tgDsPhien [data-choi]').forEach((b) => b.addEventListener('click', async () => {
+    try {
+      const d = await api('/api/world/session?url=' + enc(TG.url) + '&id=' + enc(b.dataset.choi));
+      moChoi(d.phien);
+    } catch (e) { nhac(e.message); }
+  }));
+  $$('#tgDsPhien [data-xoa-phien]').forEach((b) => b.addEventListener('click', async () => {
+    const ok = await hoi(`Xoá lần chơi của "${b.dataset.ten}"? Toàn bộ chương đã sinh sẽ mất.`);
+    if (!ok) return;
+    await api('/api/world/session/delete', { url: TG.url, id: b.dataset.xoaPhien }).catch(() => { });
+    tgNap();
+  }));
+}
+
+$('#tgXemSoTay').addEventListener('click', async () => {
+  const box = $('#tgSoTay');
+  if (!box.classList.contains('hidden')) { box.classList.add('hidden'); return; }
+  if (!box.innerHTML) {
+    try {
+      const d = await api('/api/world/info?url=' + enc(TG.url));
+      const s = d.world.sections || {};
+      box.innerHTML = Object.keys(TEN_MUC).filter((k) => s[k]).map((k) => `
+        <details${k === 'bi_an' ? ' class="mat"' : ''}>
+          <summary>${esc(TEN_MUC[k])}</summary>
+          <div class="tg-md">${mdNho(s[k])}</div>
+        </details>`).join('');
+    } catch (e) { box.innerHTML = '<div class="notice err">' + esc(e.message) + '</div>'; }
+  }
+  box.classList.remove('hidden');
+});
+
+/* markdown thu nhỏ: đủ cho sổ tay AI viết (tiêu đề, đậm, gạch đầu dòng) */
+function mdNho(text) {
+  let out = '';
+  let trongDs = false;
+  for (let dong of String(text || '').split('\n')) {
+    dong = dong.trimEnd();
+    const nd = esc(dong).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+    if (/^\s*[-*•+] /.test(dong)) {
+      if (!trongDs) { out += '<ul>'; trongDs = true; }
+      out += '<li>' + nd.replace(/^\s*[-*•+] /, '') + '</li>';
+      continue;
+    }
+    if (trongDs) { out += '</ul>'; trongDs = false; }
+    const h = dong.match(/^(#{1,6}) /);
+    if (h) out += `<h${Math.min(5, h[1].length + 2)}>` + nd.replace(/^#+ /, '') + `</h${Math.min(5, h[1].length + 2)}>`;
+    else if (dong.trim()) out += '<p>' + nd + '</p>';
+  }
+  if (trongDs) out += '</ul>';
+  return out;
+}
+
+/* ---- tạo nhân vật ---- */
+$('#tgTaoNVNut').addEventListener('click', () => {
+  tgView('tgTaoNV');
+  $('#nvBao').textContent = '';
+});
+$('#nvHuy').addEventListener('click', () => tgNap());
+
+$('#nvOk').addEventListener('click', async () => {
+  const ten = $('#nvTen').value.trim();
+  if (!ten) { $('#nvBao').textContent = 'Nhân vật phải có tên đã chứ.'; return; }
+  const nv = {
+    ten,
+    gioi_tinh: $('#nvGioiTinh').value.trim(),
+    tuoi: $('#nvTuoi').value.trim(),
+    xuat_than: $('#nvXuatThan').value.trim(),
+    tinh_cach: $('#nvTinhCach').value.trim(),
+    muc_tieu: $('#nvMucTieu').value.trim(),
+    khoi_dau: $('#nvKhoiDau').value.trim(),
+  };
+  $('#nvOk').disabled = true;
+  $('#nvBao').textContent = '✍ Quản trò đang viết chương mở đầu — thường mất 1–3 phút '
+    + '(model trên máy có thể lâu hơn). Đừng tắt app…';
+  try {
+    const d = await api('/api/world/create', { url: TG.url, nhan_vat: nv });
+    $('#nvBao').textContent = '';
+    moChoi(d.phien);
+  } catch (e) { $('#nvBao').textContent = 'Không tạo được: ' + e.message; }
+  $('#nvOk').disabled = false;
+});
+
+/* ---- màn chơi: đọc từng chương như trình đọc, thanh chương bên trái ---- */
+const TC = { phien: null, dangGui: false, xem: null };
+
+function moChoi(phien) {
+  TC.phien = phien;
+  TC.dangGui = false;
+  TC.xem = null;                       // null = mở ở chương mới nhất
+  $('#tcTen').textContent = phien.nhan_vat.ten + ' — ' + TG.ten;
+  $('#tcHanhDong').value = '';
+  // desktop: mục lục luôn mở như trình đọc; màn hẹp thì thu lại
+  $('#tcDsChuong').classList.toggle('hidden', matchMedia('(max-width:760px)').matches);
+  $('#tcBang').classList.add('hidden');
+  $('#tgChoi').classList.remove('hidden');
+  veChoi(true);
+}
+
+function veChoi(veCuoi) {
+  const p = TC.phien;
+  if (!p || !p.chuong.length) return;
+  const n = p.chuong.length;
+  if (veCuoi || TC.xem == null || TC.xem >= n) TC.xem = n - 1;
+  const c = p.chuong[TC.xem];
+  const oCuoi = TC.xem === n - 1;
+  const tt = p.trang_thai || {};
+  $('#tcPhu').textContent = [tt.vi_tri, tt.thoi_gian, `chương ${TC.xem + 1}/${n}`]
+    .filter(Boolean).join(' · ');
+
+  // esc trước rồi mới đổi **đậm** — model hay nhấn vài chữ kiểu markdown
+  const doan = (l) => '<p>' + esc(l).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>') + '</p>';
+  $('#tcNoiDung').innerHTML =
+    (c.action && c.action !== '(mở đầu)' ? `<div class="tc-act">▸ ${esc(c.action)}</div>` : '')
+    + `<div class="khung"><h2>${esc(c.title)}</h2>`
+    + String(c.text).split(/\n+/).map(doan).join('')
+    + (TC.dangGui && oCuoi ? '<div class="dang-viet">✍ Quản trò đang viết chương tiếp theo… '
+      + '(model trên máy có thể mất vài phút)</div>' : '')
+    + (!oCuoi ? '<button class="het-nut" id="tcChuongSau">Chương sau →</button>'
+      : (TC.dangGui ? '' : '<p class="het">— Bạn đang ở hiện tại của câu chuyện — hành động bên dưới để viết tiếp —</p>'))
+    + '</div>';
+  const nutSau = $('#tcChuongSau');
+  if (nutSau) nutSau.addEventListener('click', () => { TC.xem += 1; veChoi(false); });
+
+  $('#tcDsChuong').innerHTML = p.chuong.map((ch, i) => `
+    <button data-i="${i}"${i === TC.xem ? ' class="on"' : ''}>${esc(ch.title)}</button>`).join('');
+  $$('#tcDsChuong button').forEach((b) => b.addEventListener('click', () => {
+    TC.xem = Number(b.dataset.i);
+    if (matchMedia('(max-width:760px)').matches) $('#tcDsChuong').classList.add('hidden');
+    veChoi(false);
+  }));
+  const dangOn = $('#tcDsChuong button.on');
+  if (dangOn) dangOn.scrollIntoView({ block: 'nearest' });
+
+  // gợi ý chỉ hiện ở chương mới nhất; xem lại chương cũ thì hiện lối về
+  if (oCuoi && !TC.dangGui) {
+    $('#tcGoiY').innerHTML = (c.goi_y || []).map((g) =>
+      `<button title="${esc(g)}">${esc(g)}</button>`).join('');
+    $$('#tcGoiY button').forEach((b) => b.addEventListener('click', () => {
+      $('#tcHanhDong').value = b.title;
+      $('#tcHanhDong').focus();
+    }));
+  } else if (!oCuoi) {
+    $('#tcGoiY').innerHTML =
+      `<button id="tcVeCuoi">Đang xem lại chương cũ — về chương mới nhất (${n}) ↩</button>`;
+    $('#tcVeCuoi').addEventListener('click', () => veChoi(true));
+  } else {
+    $('#tcGoiY').innerHTML = '';
+  }
+
+  veBangTrangThai();
+  $('#tcNoiDung').scrollTop = (TC.dangGui && oCuoi) ? $('#tcNoiDung').scrollHeight : 0;
+}
+
+function veBangTrangThai() {
+  const p = TC.phien;
+  const tt = p.trang_thai || {};
+  const nv = p.nhan_vat || {};
+  const muc = (ten, gt) => gt ? `<h4>${ten}</h4><p>${esc(gt)}</p>` : '';
+  const ds = (ten, arr) => (arr && arr.length)
+    ? `<h4>${ten}</h4><ul>${arr.map((x) => '<li>' + esc(x) + '</li>').join('')}</ul>` : '';
+  $('#tcBang').innerHTML =
+    `<h4>Nhân vật</h4><p>${esc(nv.ten || '')}</p>`
+    + (nv.xuat_than ? `<p class="m">${esc(nv.xuat_than)}</p>` : '')
+    + muc('Vị trí', tt.vi_tri) + muc('Thời gian', tt.thoi_gian)
+    + muc('Sức mạnh', tt.suc_manh) + muc('Thể trạng', tt.the_trang)
+    + ds('Vật phẩm', tt.vat_pham) + ds('Quan hệ', tt.quan_he)
+    + ds('Việc còn treo', (p.manh_moi || []).slice(-10))
+    + ds('Biến động thế giới', (p.bien_dong || []).slice(-12))
+    + (p.tom_tat ? `<h4>Hành trình</h4><p class="m">${esc(p.tom_tat)}</p>` : '');
+}
+
+async function tcGuiHanhDong() {
+  if (TC.dangGui || !TC.phien) return;
+  const hd = $('#tcHanhDong').value.trim();
+  if (!hd) return;
+  TC.dangGui = true;
+  $('#tcGui').disabled = true;
+  $('#tcHanhDong').disabled = true;
+  veChoi(true);                        // về chương mới nhất, hiện "đang viết"
+  try {
+    const d = await api('/api/world/act', { url: TG.url, id: TC.phien.id, hanh_dong: hd });
+    TC.phien = d.phien;
+    $('#tcHanhDong').value = '';
+    TC.dangGui = false;
+    veChoi(true);                      // lật sang chương vừa sinh, đọc từ đầu
+  } catch (e) {
+    TC.dangGui = false;
+    veChoi(true);
+    await nhac('Không sinh được chương: ' + e.message + '\n\nHành động của bạn vẫn còn trong ô nhập — thử gửi lại.');
+  }
+  $('#tcGui').disabled = false;
+  $('#tcHanhDong').disabled = false;
+  $('#tcHanhDong').focus();
+}
+
+$('#tcGui').addEventListener('click', tcGuiHanhDong);
+$('#tcHanhDong').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); tcGuiHanhDong(); }
+});
+$('#tcDong').addEventListener('click', () => {
+  $('#tgChoi').classList.add('hidden');
+  tgNap();                    // về màn thế giới thì cập nhật lại danh sách phiên
+});
+$('#tcMucLuc').addEventListener('click', () => {
+  $('#tcDsChuong').classList.toggle('hidden');
+  if (matchMedia('(max-width:760px)').matches) $('#tcBang').classList.add('hidden');
+});
+$('#tcTrangThai').addEventListener('click', () => {
+  $('#tcBang').classList.toggle('hidden');
+  if (matchMedia('(max-width:760px)').matches) $('#tcDsChuong').classList.add('hidden');
+});
+
+// chuyển chương bằng phím như trình đọc
+document.addEventListener('keydown', (e) => {
+  if ($('#tgChoi').classList.contains('hidden')) return;
+  if (e.target.matches && e.target.matches('input, textarea, select')) return;
+  if (e.key === 'ArrowLeft' && TC.xem > 0) { TC.xem -= 1; veChoi(false); }
+  else if (e.key === 'ArrowRight' && TC.phien && TC.xem < TC.phien.chuong.length - 1) {
+    TC.xem += 1; veChoi(false);
+  } else if (e.key === 'Escape') {
+    $('#tgChoi').classList.add('hidden');
+    tgNap();
+  }
+});
+
+/* ---- kiểm tra kết nối AI (tab Cài đặt) ---- */
+$('#aiThu').addEventListener('click', async () => {
+  const kq = $('#aiThuKq');
+  kq.textContent = 'Đang hỏi máy chủ AI…';
+  // dùng ngay giá trị đang gõ: lưu tạm rồi mới thử, khỏi bắt người dùng bấm Lưu trước
+  try {
+    await api('/api/settings', {
+      cai_dat: {
+        ai: {
+          base_url: $('#aiUrl').value.trim(), api_key: $('#aiKey').value.trim(),
+          model: $('#aiModel').value.trim(),
+          temperature: Number($('#aiNhiet').value) || 0.8, max_tokens: 3000,
+          timeout: Number($('#aiTimeout').value) || 600,
+          chunk_chars: Number($('#aiChunk').value) || 20000,
+          num_ctx: Number($('#aiCtx').value) || 24576,
+          trau_chuot: $('#aiTrauChuot').checked,
+        },
+      },
+    });
+    const d = await api('/api/ai/models');
+    $('#aiDsModel').innerHTML = d.models.map((m) => `<option value="${esc(m)}">`).join('');
+    kq.textContent = d.models.length
+      ? '✓ Kết nối được. Model đang có: ' + d.models.slice(0, 12).join(', ')
+      + (d.models.length > 12 ? '…' : '')
+      : '✓ Kết nối được nhưng máy chủ chưa có model nào (Ollama: chạy "ollama pull qwen3:8b").';
+  } catch (e) { kq.textContent = '✗ ' + e.message; }
 });
 
 $('#mtCapNhat').addEventListener('click', async () => {

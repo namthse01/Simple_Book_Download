@@ -25,7 +25,8 @@ class BlhVipSource(Source):
 
     # ---------- tim kiem ----------
     def search(self, keyword: str, page: int = 1) -> list[BookBrief]:
-        url = f"{API}/v1/search?keyword={quote_plus(keyword.strip())}&page={max(1, page)}"
+        # 2026-09: API doi tham so tu keyword= sang q= (keyword= tra list mac dinh)
+        url = f"{API}/v1/search?q={quote_plus(keyword.strip())}&page={max(1, page)}"
         data = self._json(url).get("data") or []
         out = []
         for it in data:

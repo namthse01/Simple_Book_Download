@@ -63,6 +63,17 @@ button:disabled{opacity:.5}
 .chips button.on{background:var(--accent2);border-color:var(--accent2);color:#fff}
 .chips-tab button{background:transparent}
 .tai-them{display:block;width:100%;margin:.8rem 0;padding:.6rem}
+
+/* lưới bìa cho màn khám phá — một màn hình thấy cả chục truyện */
+#tKetQua.luoi{display:grid;grid-template-columns:repeat(3,1fr);gap:.65rem .55rem}
+@media (min-width:560px){#tKetQua.luoi{grid-template-columns:repeat(5,1fr)}}
+.poster{cursor:pointer;min-width:0}
+.p-bia{aspect-ratio:2/3;border-radius:9px;overflow:hidden;background:var(--bg3);
+  display:flex;align-items:center;justify-content:center;font-size:1.7rem;
+  border:1px solid var(--line)}
+.p-bia img{width:100%;height:100%;object-fit:cover;display:block}
+.p-ten{margin-top:.32rem;font-size:.78rem;line-height:1.3;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .man-tim{position:fixed;inset:0;z-index:40;background:var(--bg);overflow-y:auto}
 .man-tim .top{gap:.5rem}
 .man-tim input[type=search]{flex:1;min-width:0;background:var(--bg2);

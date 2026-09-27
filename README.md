@@ -99,6 +99,108 @@ mỗi file thành một (chùm) chương theo đúng thứ tự.
 
 ---
 
+## ⚔ Thâm nhập thế giới — nhập vai vào truyện (bản PC)
+
+Cạnh mỗi truyện trong **Thư viện** có nút **⚔ Thâm nhập**: tạo một nhân vật của
+riêng bạn và **sống trong thế giới truyện** — mỗi hành động bạn gõ, AI (đóng vai
+quản trò) viết tiếp một chương truyện mới cho riêng bạn.
+
+**Cần một máy chủ AI nói chuẩn OpenAI.** Miễn phí và chạy hoàn toàn trên máy:
+cài [Ollama](https://ollama.com) (nhớ để nó chạy — `ollama serve`), tải một model
+viết tiếng Việt sạch như `ollama pull gemma3:12b`, xong vào **Cài đặt → Nhập vai
+AI** bấm *Kiểm tra kết nối* rồi chọn model. Model họ qwen "suy nghĩ" trước khi
+viết — app tự tắt suy nghĩ qua API riêng của Ollama, nhưng qwen tắt nghĩ hay chèn
+lẫn chữ Hán vào văn Việt, nên họ gemma hợp việc này hơn. Muốn văn hay hơn nữa thì
+điền dịch vụ trả phí (OpenAI, DeepSeek, Gemini…) — chỉ cần đổi địa chỉ + API key.
+
+**Khởi tạo thế giới** (mỗi truyện làm **1 lần duy nhất** — về sau thế giới tự
+tiến hoá theo những gì xảy ra khi chơi): AI đọc **toàn bộ chương đã tải** theo
+từng lô, rồi kiến tạo "sổ tay thế giới" gồm 11 phần:
+
+1. Tổng quan — thế giới, cốt truyện, quy luật ẩn, văn phong, dòng thời gian;
+2. Lịch sử — thời đại, chiến tranh, văn minh, nguyên nhân → hậu quả;
+3. Cấu trúc & bản đồ — quốc gia, thành phố, địa hình, **khoảng cách & liên kết**;
+4. Thời gian & môi trường — ngày/đêm, mùa, thời tiết, động thực vật, quái vật,
+   tài nguyên, sinh thái ảnh hưởng lẫn nhau;
+5. Nhân vật — chính/phụ, tính cách, mục tiêu, ký ức, quan hệ, khả năng phát
+   triển + quy tắc sinh NPC mới;
+6. Phe phái & chính trị — quốc gia, tổ chức, tôn giáo, gia tộc, lợi ích, xung
+   đột, quyền lực, ngoại giao, luật pháp;
+7. Văn hoá & kinh tế — kiến trúc, trang phục, phong tục, ngôn ngữ, ẩm thực,
+   tín ngưỡng, tiền tệ, giá cả, nghề nghiệp;
+8. Quy luật thế giới — vật lý, ma pháp, năng lượng, linh dị, nhân quả, **cái
+   chết & hồi sinh**;
+9. Giới hạn & hệ thống sức mạnh — cấp độ, cách phát triển, ưu/nhược, giá phải
+   trả, tương khắc, trần sức mạnh, điều tuyệt đối không thể phá vỡ;
+10. Bí mật — lịch sử che giấu, tổ chức ngầm, di tích, chân tướng, kèm **ba tầng
+    thông tin** (quản trò biết / nhân vật biết / chưa ai biết) và điều kiện hé lộ;
+11. Khu vực & sự kiện — bố cục, NPC, hoạt động, tài nguyên, nguy hiểm + **bảng
+    sự kiện theo độ hiếm** (phổ biến / không thường / hiếm / cực hiếm / **độc
+    nhất** — chỉ xảy ra một lần), sự kiện hiếm có **điều kiện kích hoạt**.
+
+Sổ tay dựng từ bản cũ (7 mục) chỉ cần bấm **Khởi tạo tiếp** — phần phân tích
+chương được giữ nguyên, AI chỉ viết thêm các mục còn thiếu.
+
+Truyện dài chạy khá lâu với model trên máy — cứ để chạy nền; **dừng giữa chừng
+không mất gì**, bấm Khởi tạo lần nữa là chạy tiếp từ chỗ dừng. Truyện quá dài có
+thể chọn chế độ **Nhanh** (lấy mẫu đều khắp truyện, tối đa ~60 lô). Nên ưu tiên
+truyện **đã hoàn thành** — truyện đang ra sẽ có cảnh báo vì thế giới thiếu phần kết.
+
+**Chơi:** tạo nhân vật (chỉ bắt buộc tên — bỏ trống phần nào AI tự lo phần đó),
+AI viết chương mở đầu, từ đó bạn gõ hành động (hoặc bấm gợi ý) → ra chương mới
+(mỗi chương 1000–2000 chữ). Quản trò AI chạy theo luật:
+
+- **Nhân quả**: mỗi hành động có hậu quả trực tiếp và lâu dài. App giữ riêng một
+  **sổ việc còn treo** — lời hứa, món nợ, hẹn ước, lời đe doạ, phục bút vừa cài —
+  bơm vào mọi chương sau để thế giới nhớ mà đòi lại đúng lúc; giải quyết xong
+  thì mối đó tự rời sổ;
+- **Thế giới tự vận hành**: NPC, phe phái, kinh tế, chiến sự vẫn chuyển động
+  ở nơi bạn không có mặt; NPC, tin đồn, nhiệm vụ mới sinh ra dần theo thời gian;
+- **Biến động vĩnh viễn**: ai chết là chết, phe đổi chủ là đổi — mọi thay đổi
+  lớn được ghi vào sổ biến động của phiên chơi và **ghi đè nguyên tác**, thế
+  giới không bao giờ reset hay tự mâu thuẫn (dài quá AI tự dồn sổ lại);
+- **Ưu tiên khi xung đột**: lore gốc + biến động → quy luật thế giới → logic
+  NPC → mong muốn người chơi → ngẫu nhiên;
+- **Bất ngờ**: chương nào cũng cài ít nhất một biến số nhỏ không đoán trước.
+
+Màn chơi bày như một trình đọc truyện: **danh sách chương nằm cột trái**, mỗi lần
+chỉ hiện **một chương** chiếm trọn khổ giữa — đọc xong bấm *Chương sau →* hoặc
+phím ← →, không phải cuộn qua cả mớ chương dính liền nhau. Đang xem lại chương cũ
+thì có nút quay về chương mới nhất; ô hành động chỉ nhận khi bạn đứng ở hiện tại
+của câu chuyện. Nút **Trạng thái** xem vị trí, thời gian, tu vi, vật phẩm, quan hệ
+và sổ biến động thế giới. Mỗi nhân vật là một dòng thời gian riêng — chơi bao
+nhiêu phiên tuỳ thích, thoát ra vào lại chơi tiếp được.
+
+**Văn đọc như người viết:** quản trò được dạy bộ quy tắc văn phong thay vì để model
+tự do — tả cảm xúc bằng hành động và chi tiết cảm quan thay vì tuyên bố thẳng
+("anh cảm thấy buồn"), nhịp câu dài ngắn xen kẽ, đối thoại có ngắt lời và ẩn ý,
+động từ mạnh thay trạng từ, chặn thẳng các câu sáo AI hay viết ("một cảm giác khó
+tả", "mọi thứ sẽ không bao giờ như trước nữa"), cấm mở chương bằng tả thời tiết
+và cấm kết chương bằng đúc kết triết lý. Trước khi viết, AI phác nhanh dàn cảnh
+(chuyện gì xảy ra, cảm xúc chủ đạo, nhịp độ, chi tiết đắt) rồi mới viết — phần
+nháp này bị cắt, bạn chỉ thấy chương hoàn chỉnh.
+
+Muốn kỹ hơn nữa thì bật **Trau chuốt văn** trong Cài đặt: mỗi chương đi thêm một
+lượt biên tập viên viết lại câu chữ, giữ nguyên 100% sự kiện và độ dài. Văn lên
+rõ nhưng thời gian chờ gấp đôi.
+
+**Đóng app là đóng hết.** Bấm ✕ (hoặc tắt kiểu gì đi nữa) thì máy chủ nội bộ
+dừng, lượt tải đang dở dừng ngay, việc kiến tạo thế giới dừng, và **Ollama do app
+tự bật cũng tắt theo** — không để thứ gì chạy ngầm ăn RAM. Ollama bạn tự mở trước
+đó thì app không đụng vào. Việc đang dở không mất gì: tải tiếp và kiến tạo tiếp
+đều chạy lại từ chỗ dừng.
+
+**Tiện:** app tự bật Ollama nếu nó chưa chạy (chỉ với địa chỉ localhost) — bấm
+Thâm nhập là chơi luôn, không phải mở gì trước. Ollama mặc định cửa sổ ngữ cảnh
+khá ngắn nên app đặt `num_ctx` = 24576 cho đủ chứa sổ tay thế giới; máy ít VRAM
+thấy chậm thì hạ trong **Cài đặt → Nhập vai AI**.
+
+Dữ liệu nằm trong `Truyen\<Tên truyện>\the-gioi\` (sổ tay `world.json`, ghi chú
+phân tích `phan-tich\`, các lần chơi `phien\`). Xoá thư mục này là truyện về lại
+trạng thái chưa khởi tạo.
+
+---
+
 ## Đọc trên điện thoại
 
 Vào **Cài đặt → Đọc trên điện thoại**, tích *Cho thiết bị khác trong cùng mạng
@@ -124,6 +226,7 @@ Thư mục `mobile\` là một app đọc truyện **chạy độc lập trên �
   để duyệt các mục Đề cử/Hot/Mới, tìm theo tên, hoặc **dán link BẤT KỲ trang
   truyện nào** — bộ dò tự đoán cấu trúc (đặc sản port từ bản PC: tự tìm khối
   danh sách chương, tự suy kiểu phân trang, tự đoán khung nội dung).
+  Kết quả hiện dạng lưới bìa, **cuộn xuống là tự nạp trang tiếp** (cuộn vô tận).
   «Đọc ngay» thì mỗi chương tự tải khi mở tới, «Tải cả truyện» thì cất hết vào
   máy để đọc offline; nút ⟳ trên thẻ truyện kiểm tra chương mới.
 - **Quản lý nguồn ngay trong app** — bấm ⚙ cạnh dãy nguồn:
@@ -151,6 +254,35 @@ Thư mục `mobile\` là một app đọc truyện **chạy độc lập trên �
   Vỏ APK nằm ở `apk\` (Capacitor).
 - Cách nạp truyện gọn nhất: bản PC tải truyện / đóng tài liệu → xuất EPUB →
   chép sang điện thoại → mở DCReader bấm **＋ Nhập**.
+
+---
+
+## Đọc báo (tab **Đọc báo**)
+
+Bấm **🔄 Cập nhật tin hôm nay** là app quét **141 nguồn RSS miễn phí của 9 nước**
+(Việt Nam, Mỹ, Anh, Pháp, Trung Quốc, Nga, Nhật Bản, Brazil, Nam Phi) — khoảng
+**2.600 tin trong ~45 giây** — rồi tự chia thành 9 mục: Thời sự · Chính trị ·
+Quân sự · Kinh tế · Khoa học · Y tế · Thể thao · Văn hoá · Môi trường.
+
+- **Đọc ngay trong app**: bấm vào tin là app lấy phần chữ + ảnh của bài đó về,
+  bỏ hết script/quảng cáo/popup rồi hiển thị trong khung đọc sạch sẽ (kiểu
+  "chế độ đọc" của trình duyệt). Chỉ lấy đúng bài bạn mở, không quét hàng loạt.
+  Cuối bài luôn ghi tên báo và có nút **Mở trang báo** để sang bản gốc.
+- **Dịch cả bài** sang **tiếng Việt / Trung / Anh** (chọn ở ô *Dịch sang*):
+  mượn nguyên bộ máy của [Dịch Vạn Năng](../DichVanNang) — bộ nhớ dịch khớp
+  100% → từ điển VietPhrase/HanViet (đường Trung→Việt) → AI Ollama đánh bóng.
+  Bản dịch thay chữ tại chỗ, ảnh/video giữ nguyên, có nút **Xem bản gốc**.
+  Kết quả được nhớ lại nên lần sau mở là hiện ngay.
+- **Kho báo theo ngày**: mỗi lần cập nhật lưu vào `Truyen\Bao\<ngày>\` —
+  `bao.json` cho app đọc lại, kèm một file `.txt` cho mỗi chủ đề để đọc/chia sẻ
+  ngoài app. Chọn ngày ở ô **Ngày**, lọc theo **chủ đề**, theo **nước**, hoặc
+  gõ từ khoá tìm trong ngày. Tin đã lưu thì đọc lại lúc nào cũng được.
+- **⚙ Nguồn báo**: bật/tắt từng nguồn, lọc theo nước, và **thêm nguồn RSS mới**
+  (có nút *Thử* để kiểm tra feed đọc được không trước khi thêm). Nguồn tự thêm
+  xoá được; nguồn có sẵn tắt đi là thôi lấy tin.
+
+Cần bật Ollama (`qwen3.5` hoặc model khác) để dịch các thứ tiếng ngoài
+Trung→Việt; tắt Ollama thì phần Trung→Việt vẫn chạy bằng từ điển.
 
 ---
 

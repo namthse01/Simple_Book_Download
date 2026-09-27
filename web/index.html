@@ -24,6 +24,7 @@
     <button class="tab on" data-tab="tim">Tìm truyện</button>
     <button class="tab" data-tab="tai">Đang tải <span id="soViec" class="pill hidden">0</span></button>
     <button class="tab" data-tab="kho">Thư viện</button>
+    <button class="tab" data-tab="bao">Đọc báo</button>
     <button class="tab" data-tab="cai">Cài đặt</button>
   </nav>
 </header>
@@ -97,6 +98,48 @@
     <div id="dsKho" class="grid"></div>
   </section>
 
+  <!-- ============ ĐỌC BÁO ============ -->
+  <section id="tab-bao" class="panel">
+    <div class="row spread">
+      <h2>Đọc báo <span id="bNgayNhan" class="muted" style="font-weight:400"></span></h2>
+      <div class="row">
+        <button class="primary" id="bCapNhat">🔄 Cập nhật tin hôm nay</button>
+        <button class="ghost" id="bNguon">⚙ Nguồn báo</button>
+        <button class="ghost" id="bThuMuc">📁 Thư mục lưu</button>
+      </div>
+    </div>
+
+    <div id="bViec" class="notice hidden"></div>
+
+    <div class="bao-thanh">
+      <label class="field">Ngày
+        <select id="bChonNgay"></select>
+      </label>
+      <label class="field">Dịch sang
+        <select id="bNgonNgu">
+          <option value="goc">Giữ nguyên gốc</option>
+          <option value="vi">Tiếng Việt</option>
+          <option value="zh">中文 (Trung)</option>
+          <option value="en">English (Anh)</option>
+        </select>
+      </label>
+      <label class="field">Tìm trong ngày
+        <input id="bTim" type="search" placeholder="gõ từ khoá rồi Enter…">
+      </label>
+      <div class="bao-nut">
+        <button class="ghost" id="bDich">🌐 Dịch mục đang xem</button>
+        <label class="cb"><input type="checkbox" id="bTuDich"> tự dịch khi mở mục</label>
+      </div>
+    </div>
+
+    <div id="bMuc" class="bao-chips"></div>
+    <div id="bQuoc" class="bao-chips phu"></div>
+
+    <div id="bBao" class="notice hidden"></div>
+    <div id="bDs" class="bao-ds"></div>
+    <button id="bThem" class="ghost hidden" style="width:100%;margin:.8rem 0">Xem thêm ↓</button>
+  </section>
+
   <!-- ============ CÀI ĐẶT ============ -->
   <section id="tab-cai" class="panel">
     <h2>Cài đặt</h2>
@@ -160,6 +203,48 @@ Trên điện thoại, mở link bằng Chrome rồi chọn <b>Thêm vào màn h
       </div>
     </div>
 
+    <div class="card">
+      <h3>Nhập vai AI — Thâm nhập thế giới</h3>
+      <p class="hint" style="margin-top:0">Dùng cho nút <b>⚔ Thâm nhập</b> trong Thư viện. Nói chuẩn OpenAI —
+chạy miễn phí trên máy bằng <a href="https://ollama.com" target="_blank">Ollama</a> (mặc định),
+hoặc điền dịch vụ trả phí (OpenAI, DeepSeek, Gemini…).</p>
+      <div class="fields">
+        <label class="field wide">Địa chỉ máy chủ AI
+          <input id="aiUrl" type="text" placeholder="http://127.0.0.1:11434/v1">
+          <small>Ollama: <code>http://127.0.0.1:11434/v1</code> · OpenAI: <code>https://api.openai.com/v1</code> · Gemini: <code>https://generativelanguage.googleapis.com/v1beta/openai</code></small>
+        </label>
+        <label class="field">API key (nếu có)
+          <input id="aiKey" type="text" placeholder="Ollama để trống">
+        </label>
+        <label class="field">Model
+          <input id="aiModel" type="text" list="aiDsModel" placeholder="vd: qwen3:14b">
+          <datalist id="aiDsModel"></datalist>
+        </label>
+        <label class="field">Độ sáng tạo (0–2)
+          <input id="aiNhiet" type="number" min="0" max="2" step="0.1">
+        </label>
+        <label class="field">Chờ tối đa mỗi lần gọi (giây)
+          <input id="aiTimeout" type="number" min="30" max="3600">
+          <small>Model chạy máy yếu cần chờ lâu hơn.</small>
+        </label>
+        <label class="field">Cỡ lô phân tích (ký tự)
+          <input id="aiChunk" type="number" min="4000" max="200000" step="1000">
+          <small>Model ngữ cảnh lớn thì tăng lên — ít lần gọi hơn, phân tích nhanh hơn.</small>
+        </label>
+        <label class="field">Cửa sổ ngữ cảnh Ollama (token)
+          <input id="aiCtx" type="number" min="4096" max="131072" step="1024">
+          <small>Sổ tay thế giới khá dài nên cần ≥16k. Máy ít VRAM mà chậm/tràn thì hạ xuống.</small>
+        </label>
+      </div>
+      <label class="cb"><input type="checkbox" id="aiTrauChuot">
+        <span><b>Trau chuốt văn</b> — mỗi chương gọi AI thêm một lượt làm biên tập viên
+(giữ nguyên sự kiện, chỉ nâng câu chữ). Văn hay hơn rõ, nhưng chờ lâu gấp đôi.</span></label>
+      <div class="row">
+        <button class="ghost" id="aiThu">Kiểm tra kết nối</button>
+        <span id="aiThuKq" class="hint" style="margin:0"></span>
+      </div>
+    </div>
+
     <div class="row">
       <button id="btLuu" class="primary">Lưu cài đặt</button>
       <button id="btNapLai" class="ghost">Nạp lại plugin</button>
@@ -180,6 +265,81 @@ Trên điện thoại, mở link bằng Chrome rồi chọn <b>Thêm vào màn h
     <div class="modal-acts">
       <button id="htHuy" class="ghost">Huỷ</button>
       <button id="htOk" class="primary">Đồng ý</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ĐỌC BÀI BÁO (ngay trong app) ============ -->
+<div id="docBao" class="sheet hidden">
+  <header class="sheet-top">
+    <button class="ghost" id="dbDong">← Danh sách</button>
+    <b id="dbTenBao" class="sheet-name"></b>
+    <div class="sheet-tools">
+      <button class="ghost" id="dbTruoc">← Bài trước</button>
+      <button class="ghost" id="dbSau">Bài sau →</button>
+      <button class="primary" id="dbDich">🌐 Dịch bài này</button>
+      <button class="ghost" id="dbGocBan">Xem bản gốc</button>
+      <button class="ghost" id="dbTrinhDuyet">Mở trang báo</button>
+    </div>
+  </header>
+  <div class="db-than">
+    <div class="db-dau">
+      <h2 id="dbTieuDe"></h2>
+      <p id="dbGoc" class="db-goc"></p>
+      <p id="dbTomTat" class="db-tomtat"></p>
+      <p id="dbChan" class="db-chan"></p>
+    </div>
+    <div class="db-khung">
+      <div id="dbBao" class="notice hidden"></div>
+      <article id="dbBai" class="db-bai hidden"></article>
+      <iframe id="dbFrame" class="hidden" title="Trang báo gốc" referrerpolicy="no-referrer"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- ============ QUẢN LÝ NGUỒN BÁO ============ -->
+<div id="manNguonBao" class="modal hidden">
+  <div class="modal-box nb-box">
+    <div class="row spread" style="margin:0">
+      <h3 style="margin:0">Nguồn báo</h3>
+      <span id="nbDem" class="muted"></span>
+    </div>
+    <p class="hint" style="margin:.2rem 0 0">Bỏ tick là ngừng lấy tin từ nguồn đó. Nguồn tự
+      thêm phải là địa chỉ <b>RSS</b> (thường ở cuối trang báo, hoặc thử thêm <code>/rss</code>
+      vào sau tên miền).</p>
+
+    <div class="nb-loc">
+      <select id="nbLocQuoc"></select>
+      <input id="nbLocTen" type="search" placeholder="lọc theo tên báo…">
+      <button class="ghost" id="nbBatHet">Bật hết</button>
+      <button class="ghost" id="nbTatHet">Tắt hết</button>
+    </div>
+    <div id="nbDs" class="nb-ds"></div>
+
+    <div class="nb-them">
+      <b>＋ Thêm nguồn mới</b>
+      <div class="nb-hang">
+        <input id="nbTen" type="text" placeholder="Tên báo">
+        <input id="nbUrl" type="text" placeholder="https://… địa chỉ RSS">
+      </div>
+      <div class="nb-hang">
+        <select id="nbQuoc"></select>
+        <select id="nbLang">
+          <option value="vi">Tiếng Việt</option><option value="en">English</option>
+          <option value="zh">中文</option><option value="ja">日本語</option>
+          <option value="fr">Français</option><option value="ru">Русский</option>
+          <option value="pt">Português</option>
+        </select>
+        <select id="nbMuc"></select>
+        <button class="ghost" id="nbThu">Thử</button>
+        <button class="primary" id="nbLuu">Thêm</button>
+      </div>
+      <p id="nbBao" class="hint" style="min-height:1.2em;margin:.35rem 0 0"></p>
+    </div>
+
+    <div class="modal-acts">
+      <button class="primary" id="nbDong">Xong</button>
     </div>
   </div>
 </div>
@@ -253,6 +413,134 @@ Bấm <b>Xem thử</b> để xem mục lục sẽ tách ra sao trước khi nh�
   </div>
 </div>
 
+<!-- ============ THÂM NHẬP THẾ GIỚI ============ -->
+<div id="manTheGioi" class="sheet hidden">
+  <header class="sheet-top">
+    <button class="ghost" id="tgDong">← Thư viện</button>
+    <b id="tgTen" class="sheet-name"></b>
+    <div class="sheet-tools"><span id="tgTinhTrang" class="muted"></span></div>
+  </header>
+  <div class="sheet-body">
+    <div class="sheet-inner">
+
+      <!-- chưa khởi tạo -->
+      <div id="tgChuaCo" class="hidden">
+        <div class="card tg-intro">
+          <h3>⚔ Thâm nhập thế giới</h3>
+          <p>Tạo nhân vật của riêng bạn và <b>bước vào sống trong thế giới truyện</b>.
+AI sẽ đọc <b>toàn bộ chương đã tải</b> để hiểu thế giới, rồi kiến tạo: tổng quan &amp; văn phong,
+cấu trúc bản đồ và cơ duyên từng vùng, hồ sơ nhân vật chính/phụ, thời tiết và nhịp sống,
+các bí ẩn giấu kín, giới hạn sức mạnh, cùng bảng sự kiện từng khu vực phân theo độ hiếm.
+Sau đó mỗi hành động của bạn sẽ sinh ra một chương truyện mới.</p>
+          <div id="tgCanhBao" class="notice hidden"></div>
+          <div class="row">
+            <label class="cb"><input type="radio" name="tgCheDo" value="day_du" checked>
+              <span><b>Đầy đủ</b> — phân tích mọi chương (chuẩn nhất, truyện dài sẽ lâu)</span></label>
+            <label class="cb"><input type="radio" name="tgCheDo" value="nhanh">
+              <span><b>Nhanh</b> — lấy mẫu đều khắp truyện (tối đa ~60 lô)</span></label>
+          </div>
+          <div class="row">
+            <button class="primary big" id="tgXayNut">Khởi tạo thế giới</button>
+          </div>
+          <p class="hint" id="tgAiHint"></p>
+        </div>
+      </div>
+
+      <!-- đang kiến tạo -->
+      <div id="tgDangXay" class="hidden">
+        <div class="card">
+          <h3>Đang kiến tạo thế giới…</h3>
+          <ol id="tgBuoc" class="tg-buoc"></ol>
+          <div class="bar"><i id="tgBar" style="width:0%"></i></div>
+          <p id="tgMsg" class="hint" style="margin-bottom:.5rem"></p>
+          <p class="hint" style="margin-top:0">Có thể đóng màn hình này — việc kiến tạo vẫn chạy tiếp.
+Dừng giữa chừng cũng không mất: lần sau bấm Khởi tạo sẽ chạy tiếp từ chỗ dừng.</p>
+          <div class="row"><button class="ghost" id="tgHuyXay">Dừng (giữ tiến độ)</button></div>
+        </div>
+      </div>
+
+      <!-- lỗi khi kiến tạo -->
+      <div id="tgLoi" class="hidden">
+        <div class="notice err" id="tgLoiMsg"></div>
+        <div class="row"><button class="primary" id="tgThuLai">Thử lại (chạy tiếp)</button></div>
+      </div>
+
+      <!-- sẵn sàng -->
+      <div id="tgSanSang" class="hidden">
+        <div class="row spread" style="margin-top:0">
+          <h2 style="margin:0">🌍 Thế giới đã sẵn sàng</h2>
+          <div class="row" style="margin:0">
+            <button class="ghost" id="tgXemSoTay">Sổ tay thế giới</button>
+            <button class="ghost" id="tgXayLai">Phân tích lại từ đầu</button>
+          </div>
+        </div>
+        <p class="hint" id="tgMeta"></p>
+        <div id="tgSoTay" class="tg-so-tay hidden"></div>
+        <div class="row spread">
+          <h2 style="margin:0">Các lần chơi</h2>
+          <button class="primary" id="tgTaoNVNut">＋ Tạo nhân vật mới</button>
+        </div>
+        <div id="tgDsPhien" class="tg-phien"></div>
+      </div>
+
+      <!-- tạo nhân vật -->
+      <div id="tgTaoNV" class="hidden">
+        <div class="card">
+          <h3>Tạo nhân vật của bạn</h3>
+          <p class="hint" style="margin-top:0">Chỉ bắt buộc tên — bỏ trống phần nào, AI sẽ tự lo phần đó cho hợp thế giới.</p>
+          <div class="fields">
+            <label class="field">Tên nhân vật *<input id="nvTen" type="text"></label>
+            <label class="field">Giới tính<input id="nvGioiTinh" type="text" placeholder="nam / nữ / khác"></label>
+            <label class="field">Tuổi<input id="nvTuoi" type="text" placeholder="vd: 16"></label>
+            <label class="field wide">Xuất thân
+              <textarea id="nvXuatThan" rows="2" placeholder="vd: con thợ rèn ở một trấn nhỏ hẻo lánh…"></textarea></label>
+            <label class="field wide">Tính cách
+              <textarea id="nvTinhCach" rows="2" placeholder="vd: cẩn trọng, trọng tình nghĩa, hơi tham tiền…"></textarea></label>
+            <label class="field wide">Mục tiêu
+              <textarea id="nvMucTieu" rows="2" placeholder="vd: sống sót, tìm cơ duyên, báo thù…"></textarea></label>
+            <label class="field wide">Điểm khởi đầu mong muốn
+              <textarea id="nvKhoiDau" rows="2" placeholder="vd: bắt đầu từ thời điểm mở đầu truyện, ở vùng xa nhân vật chính…"></textarea></label>
+          </div>
+          <p id="nvBao" class="hint"></p>
+          <div class="row">
+            <button class="ghost" id="nvHuy">← Quay lại</button>
+            <button class="primary big" id="nvOk">Bước vào thế giới</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============ MÀN CHƠI (sinh chương theo hành động) ============ -->
+<div id="tgChoi" class="reader hidden">
+  <header class="reader-top">
+    <button class="ghost" id="tcDong">←</button>
+    <div class="reader-title">
+      <b id="tcTen"></b>
+      <span id="tcPhu"></span>
+    </div>
+    <div class="reader-tools">
+      <button class="ghost" id="tcMucLuc">Mục lục</button>
+      <button class="ghost" id="tcTrangThai">Trạng thái</button>
+    </div>
+  </header>
+  <div class="reader-body">
+    <aside id="tcDsChuong" class="reader-list hidden"></aside>
+    <article id="tcNoiDung" class="reader-content"></article>
+    <aside id="tcBang" class="tg-bang hidden"></aside>
+  </div>
+  <footer class="tg-hanh-dong">
+    <div id="tcGoiY" class="tg-goi-y"></div>
+    <div class="tg-nhap">
+      <textarea id="tcHanhDong" rows="2"
+        placeholder="Bạn làm gì tiếp theo? (Ctrl+Enter để gửi — kết quả do thế giới quyết định)"></textarea>
+      <button class="primary" id="tcGui">Hành động</button>
+    </div>
+  </footer>
+</div>
+
 <!-- ============ TRÌNH ĐỌC TRUYỆN ============ -->
 <div id="docTruyen" class="reader hidden">
   <header class="reader-top">
@@ -313,5 +601,6 @@ Bấm <b>Xem thử</b> để xem mục lục sẽ tách ra sao trước khi nh�
 </div>
 
 <script src="app.js"></script>
+<script src="bao.js"></script>
 </body>
 </html>

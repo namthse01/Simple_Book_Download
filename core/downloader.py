@@ -86,6 +86,22 @@ class Manager:
             job.finished = time.time()
         return True
 
+    def dung_het(self) -> int:
+        """Dung moi luot tai dang chay (goi luc dong app).
+
+        Khong lam viec nay thi tien trinh khong chet duoc: ThreadPoolExecutor de
+        lai cac luong KHONG phai daemon, va luc thoat Python se doi chung tai
+        het hang doi moi chiu ket thuc — cua so da dong nhung app van chay ngam.
+        Bat co huy roi thi cac chuong con lai bi bo qua ngay, thoat gan nhu tuc thi
+        (phan da tai van con, lan sau tai tiep binh thuong).
+        """
+        n = 0
+        for job in list(self.jobs.values()):
+            if job.status not in ("xong", "loi", "da huy"):
+                job.cancel.set()
+                n += 1
+        return n
+
     def list(self) -> list[dict]:
         return [self.jobs[i].to_dict() for i in self.order if i in self.jobs]
 
@@ -161,6 +177,7 @@ class Manager:
         store.upsert_library({
             "title": job.book.title, "author": job.book.author, "url": job.book.url,
             "source": job.book.source, "cover": job.book.cover,
+            "status": job.book.status,   # de biet truyen da hoan thanh chua (nhap vai)
             "chapters": job.total, "folder": str(folder), "files": job.files,
             "updated": time.time(),
         })
