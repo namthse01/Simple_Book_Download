@@ -89,6 +89,7 @@
       <h2>Truyện đã tải</h2>
       <div class="row">
         <button class="primary" id="btNhap">＋ Nhập tài liệu</button>
+        <button class="ghost" id="btCaoWeb">🌐 Nhập từ web</button>
         <button class="ghost" id="btMoThuMuc">Mở thư mục lưu</button>
       </div>
     </div>
@@ -294,6 +295,45 @@ hoặc điền dịch vụ trả phí (OpenAI, DeepSeek, Gemini…).</p>
       <article id="dbBai" class="db-bai hidden"></article>
       <iframe id="dbFrame" class="hidden" title="Trang báo gốc" referrerpolicy="no-referrer"
               sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CÀO TÀI LIỆU TỪ WEB ============ -->
+<div id="manCao" class="modal hidden">
+  <div class="modal-box cao-box">
+    <h3 style="margin:0">Nhập tài liệu từ web</h3>
+    <p class="hint" style="margin:.2rem 0 0">Dán địa chỉ trang có tài liệu (mỗi dòng một
+      trang). App dò ra các file <b>PDF, DOCX, EPUB, TXT, MD</b> trong trang, bạn tick cái
+      nào thì tải cái đó rồi nhập thẳng vào thư viện. App đọc <code>robots.txt</code> và
+      nghỉ giữa các lần gọi theo cài đặt, để không làm phiền máy chủ người ta.</p>
+
+    <textarea id="caoUrl" rows="3"
+      placeholder="https://trang-co-tai-lieu/...&#10;https://trang-khac/..."></textarea>
+    <div class="cao-hang">
+      <label class="field">Dò sâu
+        <select id="caoSau">
+          <option value="0">Chỉ trang này</option>
+          <option value="1" selected>Thêm trang con (1 lớp)</option>
+          <option value="2">Thêm 2 lớp</option>
+        </select>
+      </label>
+      <label class="field">Tối đa số trang
+        <input id="caoMaxTrang" type="number" min="1" max="400" value="60">
+      </label>
+      <button class="primary" id="caoDo">Dò tài liệu</button>
+    </div>
+
+    <div id="caoBao" class="notice hidden"></div>
+    <div class="cao-dsbar hidden" id="caoThanh">
+      <label class="cb"><input type="checkbox" id="caoChonHet" checked> Chọn hết</label>
+      <span id="caoDem" class="muted"></span>
+    </div>
+    <div id="caoDs" class="cao-ds"></div>
+
+    <div class="modal-acts">
+      <button class="ghost" id="caoDong">Đóng</button>
+      <button class="primary" id="caoNhap" disabled>Nhập vào thư viện</button>
     </div>
   </div>
 </div>
@@ -602,5 +642,6 @@ Dừng giữa chừng cũng không mất: lần sau bấm Khởi tạo sẽ ch�
 
 <script src="app.js"></script>
 <script src="bao.js"></script>
+<script src="cao.js"></script>
 </body>
 </html>

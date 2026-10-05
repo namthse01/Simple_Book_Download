@@ -15,7 +15,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
-from . import ai, bao, dich_bao, importer, reader, store, world
+from . import ai, bao, cao_tai_lieu, dich_bao, importer, reader, store, world
 from .downloader import Manager
 from .net import Http
 from .sources import Registry
@@ -48,26 +48,32 @@ APP: App | None = None
 
 # Viec chay nen cua muc Doc bao (cap nhat / dich). Chi cho 1 viec mot luc cho
 # khoi vua tai RSS vua goi AI lam nghen may.
-VIEC_BAO = {"dang": False, "loai": "", "xong": 0, "tong": 0, "ten": "",
+def _viec_moi():
+    return {"dang": False, "loai": "", "xong": 0, "tong": 0, "ten": "",
             "ket_qua": None, "loi": "", "xong_luc": 0.0}
 
 
-def _chay_nen(loai: str, ham) -> None:
-    """Chay `ham(bao_tien_do)` trong luong rieng, cap nhat VIEC_BAO cho giao dien theo doi."""
-    VIEC_BAO.update({"dang": True, "loai": loai, "xong": 0, "tong": 0, "ten": "",
-                     "ket_qua": None, "loi": "", "xong_luc": 0.0})
+VIEC_BAO = _viec_moi()      # cap nhat / dich bao
+VIEC_CAO = _viec_moi()      # do va nhap tai lieu tu web
+
+
+def _chay_nen(loai: str, ham, kho=None) -> None:
+    """Chay `ham(bao_tien_do)` trong luong rieng, ghi tien do vao `kho` cho giao dien theo doi."""
+    kho = VIEC_BAO if kho is None else kho
+    kho.update(_viec_moi())
+    kho.update({"dang": True, "loai": loai})
 
     def tien_do(xong, tong, ten=""):
-        VIEC_BAO.update({"xong": xong, "tong": tong, "ten": ten})
+        kho.update({"xong": xong, "tong": tong, "ten": ten})
 
     def chay():
         try:
-            VIEC_BAO["ket_qua"] = ham(tien_do)
+            kho["ket_qua"] = ham(tien_do)
         except Exception:
-            VIEC_BAO["loi"] = traceback.format_exc(limit=3)
+            kho["loi"] = traceback.format_exc(limit=3)
         finally:
-            VIEC_BAO["dang"] = False
-            VIEC_BAO["xong_luc"] = __import__("time").time()
+            kho["dang"] = False
+            kho["xong_luc"] = __import__("time").time()
 
     threading.Thread(target=chay, daemon=True).start()
 
@@ -324,6 +330,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.fail("không tìm thấy bài này trong kho")
             return self.json({"ok": True, "bai": b})
 
+        if path == "/api/cao/tien-do":
+            return self.json({"ok": True, "viec": dict(VIEC_CAO)})
+
         if path == "/api/bao/nhung":
             u = q.get("url") or ""
             if not u.startswith("http"):
@@ -509,6 +518,34 @@ class Handler(BaseHTTPRequestHandler):
 
             _chay_nen("dich", chay)
             return self.json({"ok": True, "viec": dict(VIEC_BAO), "so_can": len(can)})
+
+        if path == "/api/cao/do":
+            if VIEC_CAO["dang"]:
+                return self.fail("đang dò một trang khác, đợi xong đã")
+            ds = [x for x in (data.get("dia_chi") or []) if str(x).startswith("http")]
+            if not ds:
+                return self.fail("chưa có địa chỉ trang nào")
+            # chu y: khong dung `or 1` — chon "chi trang nay" (sau=0) la gia tri
+            # falsy, se bi bien thanh 1 va di do ca trang con
+            sau_raw = data.get("sau")
+            sau = max(0, min(3, int(1 if sau_raw is None else sau_raw)))
+            max_trang = max(1, min(400, int(data.get("max_trang") or 60)))
+            _chay_nen("do", lambda bao_tien_do: cao_tai_lieu.do_trang(
+                app.http, ds, sau=sau, max_trang=max_trang,
+                bao_tien_do=bao_tien_do), VIEC_CAO)
+            return self.json({"ok": True, "viec": dict(VIEC_CAO)})
+
+        if path == "/api/cao/nhap":
+            if VIEC_CAO["dang"]:
+                return self.fail("đang chạy việc khác, đợi xong đã")
+            urls = [x for x in (data.get("urls") or []) if str(x).startswith("http")]
+            if not urls:
+                return self.fail("chưa chọn file nào")
+            ten = data.get("ten") or {}
+            dinh_dang = data.get("dinh_dang")
+            _chay_nen("nhap", lambda bao_tien_do: cao_tai_lieu.tai_va_nhap(
+                app.http, urls, ten, dinh_dang, bao_tien_do), VIEC_CAO)
+            return self.json({"ok": True, "viec": dict(VIEC_CAO)})
 
         if path == "/api/bao/tai-bai":
             # Bam vao bai nao thi lay bai do ve doc trong app (kieu "che do doc"),

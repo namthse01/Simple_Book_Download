@@ -478,3 +478,23 @@ details summary{cursor:pointer;color:var(--muted);font-size:.85rem}
 .db-bai li{margin:.35em 0}
 .db-bai table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.92rem}
 .db-bai td,.db-bai th{border:1px solid var(--line);padding:.4rem .6rem}
+
+/* ---------- cào tài liệu từ web ---------- */
+.cao-box{max-width:46rem;width:100%;display:flex;flex-direction:column;gap:.7rem}
+.cao-box textarea{font-family:Consolas,monospace;font-size:.85rem}
+.cao-hang{display:flex;gap:.6rem;align-items:end;flex-wrap:wrap}
+.cao-hang .field{flex:1;min-width:9rem}
+.cao-hang button{flex:none}
+.cao-dsbar{display:flex;justify-content:space-between;align-items:center;
+  border-top:1px solid var(--line);padding-top:.5rem}
+.cao-ds{display:flex;flex-direction:column;gap:.3rem;max-height:38vh;overflow-y:auto}
+.cao-mot{display:flex;align-items:center;gap:.55rem;background:var(--bg3);
+  border:1px solid var(--line);border-radius:9px;padding:.4rem .6rem}
+.cao-mot.kho{opacity:.55}
+.cao-mot input[type=checkbox]{width:auto;flex:none}
+.cao-mot .ten{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}
+.cao-mot .ten b{font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cao-mot .ten small{color:var(--muted);font-size:.74rem;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.cao-mot .duoi{flex:none;font-size:.72rem;text-transform:uppercase;color:var(--accent);
+  border:1px solid var(--line);border-radius:99px;padding:.05rem .5rem}

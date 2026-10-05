@@ -286,6 +286,29 @@ Trung→Việt; tắt Ollama thì phần Trung→Việt vẫn chạy bằng từ
 
 ---
 
+## Nhập tài liệu từ web (nút **🌐 Nhập từ web** ở tab Thư viện)
+
+Dán địa chỉ trang có tài liệu (mỗi dòng một trang), app dò ra mọi file
+**PDF · DOCX · EPUB · TXT · MD** trong đó, bạn tick cái nào thì tải cái đó rồi
+nhập thẳng vào thư viện (vẫn đi qua bộ tách chương sẵn có, nên đọc được ngay
+trong app và xuất được EPUB/TXT).
+
+- **Dò sâu**: *chỉ trang này* · *thêm 1 lớp trang con* · *2 lớp*. Chỉ đi loanh
+  quanh trong cùng tên miền, nhưng file tải về thì nhận cả link sang chỗ khác
+  (CDN, GitHub Releases…).
+- **Cư xử tử tế với máy chủ người ta**: đọc `robots.txt` trước, đường nào bị
+  cấm thì bỏ qua; nghỉ giữa các lần gọi theo ô *Nghỉ giữa 2 lần gọi* trong Cài
+  đặt; chặn số trang dò và số file mỗi lượt; file quá 80 MB thì bỏ.
+- Nhớ ngó qua danh sách trước khi nhập — mấy file phụ của trang (README,
+  CONTRIBUTING…) cũng bị dò ra, bỏ tick đi là xong.
+
+Ví dụ đã chạy: [BK Study Library](https://bk-study-library.github.io/hcmut-library/)
+— tài liệu học tập sinh viên Bách Khoa TP.HCM chia sẻ, giấy phép CC-BY-SA-4.0;
+dò 8 trang môn ra 21 file, nhập được 19 tài liệu (slide bài giảng, đề thi cũ,
+tóm tắt, bảng công thức).
+
+---
+
 ## Cài đặt đáng chú ý
 
 | Mục | Ý nghĩa |
