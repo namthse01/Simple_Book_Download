@@ -324,7 +324,19 @@ hoặc điền dịch vụ trả phí (OpenAI, DeepSeek, Gemini…).</p>
       <button class="primary" id="caoDo">Dò tài liệu</button>
     </div>
 
+    <div class="cao-theodoi">
+      <div class="row spread" style="margin:0">
+        <b style="font-size:.9rem">Nguồn đang theo dõi</b>
+        <button class="ghost" id="caoKiemHet">Kiểm tra tài liệu mới</button>
+      </div>
+      <div id="caoNguon" class="cao-nguon"></div>
+    </div>
+
     <div id="caoBao" class="notice hidden"></div>
+    <label class="cb hidden" id="caoTheoDoiKhung" style="margin:.2rem 0">
+      <input type="checkbox" id="caoTheoDoi" checked>
+      <span>Theo dõi trang này — lần sau bấm <b>Kiểm tra tài liệu mới</b> là app
+        chỉ hiện tài liệu chưa từng nhập</span></label>
     <div class="cao-dsbar hidden" id="caoThanh">
       <label class="cb"><input type="checkbox" id="caoChonHet" checked> Chọn hết</label>
       <span id="caoDem" class="muted"></span>

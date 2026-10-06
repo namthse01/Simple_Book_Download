@@ -9,9 +9,11 @@ Cach cu xu voi may chu nguoi ta (de khoi bi chan, va cung la phep lich su):
 """
 from __future__ import annotations
 
+import json
 import re
 import threading
 import urllib.robotparser
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import PurePosixPath
 from urllib.parse import unquote, urljoin, urlparse
@@ -166,4 +168,115 @@ def tai_va_nhap(http, ds_url: list[str], ten_goi: dict | None = None,
         return {"sach": [], "loi": loi or ["không tải được file nào"]}
     ket = importer.import_files(tai_ve, formats=formats)
     ket["loi"] = loi + list(ket.get("loi") or [])
+    # Ghi lai da lay nhung file nao, de lan sau kiem tra chi hien tai lieu MOI
+    ten_da_tai = {t for t, _ in tai_ve}
+    danh_dau_da_nhap([u for u in ds_url if (ten_goi.get(u) or _ten_file(u)) in ten_da_tai],
+                     ten_goi)
     return ket
+
+
+# ================================================================ theo doi nguon
+# Nho lai trang da cao va nhung file da lay, de lan sau chi hien TAI LIEU MOI
+# chu khong nhap trung. Khop theo dia chi file; file doi ten nhung cung dia chi
+# van tinh la da co.
+FILE_NGUON = store.DATA / "nguon_tai_lieu.json"
+
+
+def _doc_nguon() -> list[dict]:
+    try:
+        d = json.loads(FILE_NGUON.read_text(encoding="utf-8"))
+        return d if isinstance(d, list) else []
+    except Exception:
+        return []
+
+
+def _ghi_nguon(ds: list[dict]) -> None:
+    with _lock:
+        FILE_NGUON.write_text(json.dumps(ds, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
+def ds_nguon() -> list[dict]:
+    """Danh sach nguon dang theo doi (bo bot phan da_nhap cho nhe)."""
+    ra = []
+    for n in _doc_nguon():
+        ra.append({k: v for k, v in n.items() if k != "da_nhap"}
+                  | {"so_da_nhap": len(n.get("da_nhap") or {})})
+    return ra
+
+
+def _ma_nguon(dia_chi: list[str]) -> str:
+    goc = urlparse(dia_chi[0]).netloc or "nguon"
+    return re.sub(r"[^a-z0-9]+", "-", (goc + "-" + str(abs(hash(tuple(dia_chi))) % 10000)).lower())
+
+
+def them_nguon(dia_chi: list[str], ten: str = "", sau: int = 1,
+               max_trang: int = 60, tung_thay: list[str] | None = None) -> list[dict]:
+    """Ghi mot nguon vao so theo doi.
+
+    `tung_thay` = cac dia chi file da thay khi do. Can no vi file tai lieu hay
+    nam o ten mien khac trang (CDN, GitHub Releases) — khong co danh sach nay
+    thi luc danh dau "da nhap" se khong biet file thuoc nguon nao.
+    """
+    ds = _doc_nguon()
+    dia_chi = [u.strip() for u in dia_chi if u.strip().startswith("http")]
+    if not dia_chi:
+        return ds_nguon()
+    cu = next((n for n in ds if n["dia_chi"] == dia_chi), None)
+    if cu is None:
+        cu = {"ma": _ma_nguon(dia_chi), "ten": "", "dia_chi": dia_chi,
+              "da_nhap": {}, "lan_kiem": "", "moi": 0}
+        ds.append(cu)
+    cu.update({"sau": sau, "max_trang": max_trang,
+               "ten": ten or cu.get("ten") or urlparse(dia_chi[0]).netloc})
+    if tung_thay:
+        cu["tung_thay"] = sorted(set(cu.get("tung_thay") or []) | set(tung_thay))
+    _ghi_nguon(ds)
+    return ds_nguon()
+
+
+def xoa_nguon(ma: str) -> list[dict]:
+    _ghi_nguon([n for n in _doc_nguon() if n.get("ma") != ma])
+    return ds_nguon()
+
+
+def danh_dau_da_nhap(urls: list[str], ten_goi: dict | None = None) -> None:
+    """Ghi lai nhung file vua nhap, cho moi nguon co chua dia chi do."""
+    ten_goi = ten_goi or {}
+    ds = _doc_nguon()
+    if not ds:
+        return
+    luc = datetime.now().isoformat(timespec="seconds")
+    for n in ds:
+        nha = {urlparse(u).netloc for u in n["dia_chi"]}
+        for u in urls:
+            # file cua nguon nay: hoac cung ten mien, hoac da tung thay khi do
+            if urlparse(u).netloc in nha or u in (n.get("da_nhap") or {}) \
+                    or u in (n.get("tung_thay") or []):
+                n.setdefault("da_nhap", {})[u] = {"ten": ten_goi.get(u, ""), "luc": luc}
+    _ghi_nguon(ds)
+
+
+def kiem_tra_moi(http, ma: str = "", bao_tien_do=None) -> dict:
+    """Do lai cac nguon dang theo doi, tra ve nhung file CHUA tung nhap."""
+    ds = _doc_nguon()
+    can = [n for n in ds if not ma or n.get("ma") == ma]
+    if not can:
+        return {"nguon": [], "file": [], "loi": ["không có nguồn nào đang theo dõi"]}
+    tat_ca, loi = [], []
+    for i, n in enumerate(can):
+        kq = do_trang(http, n["dia_chi"], sau=int(n.get("sau", 1)),
+                      max_trang=int(n.get("max_trang", 60)),
+                      bao_tien_do=(lambda x, t, ten="", i=i: bao_tien_do(
+                          i * 100 + x, len(can) * 100, ten)) if bao_tien_do else None)
+        loi += kq["loi"]
+        da = set((n.get("da_nhap") or {}).keys())
+        n["tung_thay"] = sorted({f["url"] for f in kq["file"]})
+        n["lan_kiem"] = datetime.now().isoformat(timespec="seconds")
+        moi = [f for f in kq["file"] if f["url"] not in da]
+        for f in moi:
+            f["nguon_ma"] = n["ma"]
+            f["nguon_ten"] = n.get("ten", "")
+        n["moi"] = len(moi)
+        tat_ca += moi
+    _ghi_nguon(ds)
+    return {"nguon": ds_nguon(), "file": tat_ca, "loi": loi}

@@ -330,6 +330,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.fail("không tìm thấy bài này trong kho")
             return self.json({"ok": True, "bai": b})
 
+        if path == "/api/cao/nguon":
+            return self.json({"ok": True, "nguon": cao_tai_lieu.ds_nguon()})
+
         if path == "/api/cao/tien-do":
             return self.json({"ok": True, "viec": dict(VIEC_CAO)})
 
@@ -533,6 +536,23 @@ class Handler(BaseHTTPRequestHandler):
             _chay_nen("do", lambda bao_tien_do: cao_tai_lieu.do_trang(
                 app.http, ds, sau=sau, max_trang=max_trang,
                 bao_tien_do=bao_tien_do), VIEC_CAO)
+            return self.json({"ok": True, "viec": dict(VIEC_CAO)})
+
+        if path == "/api/cao/nguon/them":
+            return self.json({"ok": True, "nguon": cao_tai_lieu.them_nguon(
+                data.get("dia_chi") or [], data.get("ten") or "",
+                int(data.get("sau") if data.get("sau") is not None else 1),
+                int(data.get("max_trang") or 60), data.get("tung_thay") or [])})
+
+        if path == "/api/cao/nguon/xoa":
+            return self.json({"ok": True,
+                              "nguon": cao_tai_lieu.xoa_nguon(data.get("ma") or "")})
+
+        if path == "/api/cao/kiem-tra":
+            if VIEC_CAO["dang"]:
+                return self.fail("đang chạy việc khác, đợi xong đã")
+            _chay_nen("kiem_tra", lambda bao_tien_do: cao_tai_lieu.kiem_tra_moi(
+                app.http, data.get("ma") or "", bao_tien_do), VIEC_CAO)
             return self.json({"ok": True, "viec": dict(VIEC_CAO)})
 
         if path == "/api/cao/nhap":

@@ -302,6 +302,18 @@ trong app và xuất được EPUB/TXT).
 - Nhớ ngó qua danh sách trước khi nhập — mấy file phụ của trang (README,
   CONTRIBUTING…) cũng bị dò ra, bỏ tick đi là xong.
 
+**Theo dõi nguồn để lấy tài liệu mới.** Lúc nhập, để nguyên ô *Theo dõi trang
+này* là app ghi trang đó vào sổ, kèm danh sách file đã lấy. Về sau mở lại hộp
+*Nhập từ web* rồi bấm **Kiểm tra tài liệu mới** — app dò lại đúng những trang
+đó và **chỉ hiện file chưa từng nhập**, không bày lại đống cũ. Mỗi nguồn trong
+sổ có nút kiểm tra riêng và nút xoá; chỗ đó cũng ghi đã lấy bao nhiêu file và
+kiểm tra lần cuối lúc nào.
+
+Việc đối chiếu làm theo **địa chỉ file**, nên trang đổi giao diện hay đổi tên
+hiển thị vẫn nhận ra đúng. Ngược lại, nếu bên họ đăng lại cùng một tài liệu ở
+địa chỉ mới thì app coi là tài liệu mới — nhìn tên là biết, bỏ tick là xong.
+App không tự dò nền; chỉ dò khi bạn bấm, để không làm phiền máy chủ người ta.
+
 Ví dụ đã chạy: [BK Study Library](https://bk-study-library.github.io/hcmut-library/)
 — tài liệu học tập sinh viên Bách Khoa TP.HCM chia sẻ, giấy phép CC-BY-SA-4.0;
 dò 8 trang môn ra 21 file, nhập được 19 tài liệu (slide bài giảng, đề thi cũ,
