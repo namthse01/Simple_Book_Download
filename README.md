@@ -299,8 +299,14 @@ trong app và xuất được EPUB/TXT).
 - **Cư xử tử tế với máy chủ người ta**: đọc `robots.txt` trước, đường nào bị
   cấm thì bỏ qua; nghỉ giữa các lần gọi theo ô *Nghỉ giữa 2 lần gọi* trong Cài
   đặt; chặn số trang dò và số file mỗi lượt; file quá 80 MB thì bỏ.
-- Nhớ ngó qua danh sách trước khi nhập — mấy file phụ của trang (README,
-  CONTRIBUTING…) cũng bị dò ra, bỏ tick đi là xong.
+- **Link không có đuôi file** kiểu *"Tải xuống (3.7 MB)"* hay `/download?id=…`
+  vẫn nhận ra: app hỏi thẳng máy chủ (HEAD) xem đó là file gì rồi mới xếp vào.
+- **Nhờ AI lọc giúp** (ô tick trong hộp): AI sẵn có của app đọc tên file + chữ
+  trên link + tiêu đề trang, bỏ tick sẵn những thứ không phải tài liệu (README,
+  LICENSE, CONTRIBUTING, mẫu đơn, file cấu hình) và **đặt tên dễ đọc** cho từng
+  tài liệu — `AS1003_lecture-slides_chuong-4-bai-toan-gian.pdf` thành
+  *"AS1003 Chương 4 Bài toán gian"*, vẫn giữ chi tiết phân biệt như mã đề, học kỳ.
+  Tên file gốc hiện ngay dưới để đối chiếu. Cần chọn model ở tab Cài đặt.
 
 **Theo dõi nguồn để lấy tài liệu mới.** Lúc nhập, để nguyên ô *Theo dõi trang
 này* là app ghi trang đó vào sổ, kèm danh sách file đã lấy. Về sau mở lại hộp

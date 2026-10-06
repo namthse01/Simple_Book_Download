@@ -20,15 +20,23 @@ $('#btCaoWeb').addEventListener('click', () => {
 });
 $('#caoDong').addEventListener('click', () => $('#manCao').classList.add('hidden'));
 
+function tenHienCao(f) {
+  return f.ai_ten || f.ten;
+}
+
 function veDsCao() {
   const ds = CAO.file;
   $('#caoThanh').classList.toggle('hidden', !ds.length);
-  $('#caoDs').innerHTML = ds.map((f, i) =>
-    '<label class="cao-mot ' + (f.doc_duoc ? '' : 'kho') + '">'
-    + '<input type="checkbox" data-i="' + i + '" ' + (f.doc_duoc ? 'checked' : '') + '>'
-    + '<span class="ten"><b>' + esc(f.ten) + '</b>'
-    + '<small>' + esc(f.nhan || f.tieu_de_trang || f.tu_trang) + '</small></span>'
-    + '<span class="duoi">' + esc(f.duoi || '?') + '</span></label>').join('');
+  $('#caoDs').innerHTML = ds.map((f, i) => {
+    const rac = f.ai_tai_lieu === false;          // AI bảo đây không phải tài liệu
+    const tick = f.doc_duoc && !rac;
+    const phu = f.ai_ten ? f.ten : (f.nhan || f.tieu_de_trang || f.tu_trang);
+    return '<label class="cao-mot ' + (f.doc_duoc && !rac ? '' : 'kho') + '">'
+      + '<input type="checkbox" data-i="' + i + '" ' + (tick ? 'checked' : '') + '>'
+      + '<span class="ten"><b>' + esc(tenHienCao(f)) + '</b>'
+      + '<small>' + (rac ? 'AI: không phải tài liệu — ' : '') + esc(phu) + '</small></span>'
+      + '<span class="duoi">' + esc(f.duoi || '?') + '</span></label>';
+  }).join('');
   $$('#caoDs input[type=checkbox]').forEach((c) =>
     c.addEventListener('change', capNhatDemCao));
   capNhatDemCao();
@@ -47,7 +55,8 @@ function capNhatDemCao() {
 $('#caoChonHet').addEventListener('change', () => {
   const bat = $('#caoChonHet').checked;
   $$('#caoDs input[type=checkbox]').forEach((c, i) => {
-    c.checked = bat && (CAO.file[i] || {}).doc_duoc !== false;
+    const f = CAO.file[i] || {};
+    c.checked = bat && f.doc_duoc !== false && f.ai_tai_lieu !== false;
   });
   capNhatDemCao();
 });
@@ -75,6 +84,7 @@ $('#caoDo').addEventListener('click', async () => {
     await api('/api/cao/do', {
       dia_chi: dia_chi, sau: Number($('#caoSau').value),
       max_trang: Number($('#caoMaxTrang').value) || 60,
+      dung_ai: $('#caoDungAi').checked,
     });
     const v = await choXongCao('Đang dò trang');
     if (!v) { caoBao('Dò lâu quá, dừng theo dõi.', 'err'); }
@@ -97,7 +107,10 @@ $('#caoNhap').addEventListener('click', async () => {
   const chon = $$('#caoDs input[type=checkbox]:checked').map((c) => CAO.file[Number(c.dataset.i)]);
   if (!chon.length) return;
   const ten = {};
-  chon.forEach((f) => { ten[f.url] = f.ten; });
+  chon.forEach((f) => {
+    // dùng tên AI gợi ý nhưng giữ đuôi file, vì bộ nhập nhận dạng theo đuôi
+    ten[f.url] = f.ai_ten ? (f.ai_ten + '.' + (f.duoi || 'bin')) : f.ten;
+  });
   $('#caoNhap').disabled = true;
   $('#caoDo').disabled = true;
   caoBao('Đang tải…', 'info');
@@ -166,7 +179,7 @@ async function kiemTraMoi(ma) {
   $('#caoTheoDoiKhung').classList.add('hidden');
   caoBao('Đang kiểm tra tài liệu mới…', 'info');
   try {
-    await api('/api/cao/kiem-tra', { ma: ma || '' });
+    await api('/api/cao/kiem-tra', { ma: ma || '', dung_ai: $('#caoDungAi').checked });
     const v = await choXongCao('Đang dò lại');
     if (!v) caoBao('Kiểm tra lâu quá, dừng theo dõi.', 'err');
     else if (v.loi) caoBao('Lỗi: ' + v.loi, 'err');

@@ -533,9 +533,19 @@ class Handler(BaseHTTPRequestHandler):
             sau_raw = data.get("sau")
             sau = max(0, min(3, int(1 if sau_raw is None else sau_raw)))
             max_trang = max(1, min(400, int(data.get("max_trang") or 60)))
-            _chay_nen("do", lambda bao_tien_do: cao_tai_lieu.do_trang(
-                app.http, ds, sau=sau, max_trang=max_trang,
-                bao_tien_do=bao_tien_do), VIEC_CAO)
+            dung_ai = bool(data.get("dung_ai"))
+
+            def chay_do(bao_tien_do):
+                kq = cao_tai_lieu.do_trang(app.http, ds, sau=sau, max_trang=max_trang,
+                                           bao_tien_do=bao_tien_do)
+                if dung_ai and kq["file"]:
+                    ra = cao_tai_lieu.loc_bang_ai(
+                        kq["file"], store.load_settings()["ai"], bao_tien_do)
+                    if ra["loi"]:
+                        kq["loi"].append("AI lọc lỗi: " + ra["loi"])
+                return kq
+
+            _chay_nen("do", chay_do, VIEC_CAO)
             return self.json({"ok": True, "viec": dict(VIEC_CAO)})
 
         if path == "/api/cao/nguon/them":
@@ -551,8 +561,18 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/cao/kiem-tra":
             if VIEC_CAO["dang"]:
                 return self.fail("đang chạy việc khác, đợi xong đã")
-            _chay_nen("kiem_tra", lambda bao_tien_do: cao_tai_lieu.kiem_tra_moi(
-                app.http, data.get("ma") or "", bao_tien_do), VIEC_CAO)
+            dung_ai_kt = bool(data.get("dung_ai"))
+
+            def chay_kt(bao_tien_do):
+                kq = cao_tai_lieu.kiem_tra_moi(app.http, data.get("ma") or "", bao_tien_do)
+                if dung_ai_kt and kq["file"]:
+                    ra = cao_tai_lieu.loc_bang_ai(
+                        kq["file"], store.load_settings()["ai"], bao_tien_do)
+                    if ra["loi"]:
+                        kq["loi"].append("AI lọc lỗi: " + ra["loi"])
+                return kq
+
+            _chay_nen("kiem_tra", chay_kt, VIEC_CAO)
             return self.json({"ok": True, "viec": dict(VIEC_CAO)})
 
         if path == "/api/cao/nhap":

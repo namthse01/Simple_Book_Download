@@ -37,6 +37,41 @@ KIEU_OK = {
 MAX_FILE_MB = 80
 _lock = threading.Lock()
 
+# Link kieu "Tai xuong (3.7 MB)" / "/download?id=123" khong co duoi file trong
+# dia chi — hoi thang may chu bang HEAD de biet co phai tai lieu khong.
+_CHU_TAI = re.compile(
+    r"t[aả]i\s*(xu[oố]ng|v[eề])|download|t[aả]i\s*file|b[aả]n\s*pdf|xem\s*b[aả]n|"
+    r"attachment|pdf|docx?|epub|t[aà]i\s*li[eệ]u", re.I)
+_DUONG_TAI = re.compile(r"/(download|tai-xuong|taixuong|file|files|attachment|uploads?|"
+                        r"releases/download|media)(/|\?|$)", re.I)
+
+
+def _co_ve_tai_lieu(chu: str, url: str) -> bool:
+    return bool(_CHU_TAI.search(chu or "") or _DUONG_TAI.search(url or ""))
+
+
+def _hoi_dau_file(http, url: str) -> tuple[str, int]:
+    """HEAD xem may chu bao day la file gi. Tra ve (duoi, so byte)."""
+    try:
+        r = http.get(url, timeout=12, stream=True)
+        h = {k.lower(): v for k, v in r.headers.items()}
+        r.close()
+    except Exception:
+        return "", 0
+    kieu = (h.get("content-type") or "").split(";")[0].strip().lower()
+    duoi = KIEU_OK.get(kieu, "")
+    if not duoi:
+        # vai may chu bao ten file trong Content-Disposition
+        ten = h.get("content-disposition") or ""
+        m = re.search(r"filename\*?=(?:UTF-8'')?\"?([^\";]+)", ten)
+        if m:
+            duoi = PurePosixPath(unquote(m.group(1))).suffix.lstrip(".").lower()
+    try:
+        co = int(h.get("content-length") or 0)
+    except ValueError:
+        co = 0
+    return (duoi if duoi in DUOI_OK or duoi in DUOI_BIET_NHUNG_CHUA_DOC else ""), co
+
 
 def _duoi(url: str) -> str:
     duong = unquote(urlparse(url).path)
@@ -118,7 +153,20 @@ def do_trang(http, dia_chi: list[str], sau: int = 1, max_trang: int = 60,
                     tim_thay[day_du] = {
                         "url": day_du, "ten": _ten_file(day_du, chu), "duoi": d,
                         "nhan": chu[:120], "tu_trang": goc_url, "tieu_de_trang": tieu_de,
-                        "doc_duoc": d in DUOI_OK,
+                        "doc_duoc": d in DUOI_OK, "co": 0,
+                    }
+            elif (not d and _co_ve_tai_lieu(chu, day_du)
+                  and day_du not in tim_thay and len(tim_thay) < max_file):
+                # link kieu "Tai xuong (3.7 MB)" — dia chi khong co duoi file,
+                # hoi thang may chu xem la file gi
+                d2, co = _hoi_dau_file(http, day_du)
+                if d2:
+                    tim_thay[day_du] = {
+                        "url": day_du, "ten": _ten_file(day_du, chu) if "." in
+                        _ten_file(day_du, chu) else (re.sub(r"[\/:*?\"<>|]+", " ", chu)
+                                                     .strip()[:70] or "tai-lieu") + "." + d2,
+                        "duoi": d2, "nhan": chu[:120], "tu_trang": goc_url,
+                        "tieu_de_trang": tieu_de, "doc_duoc": d2 in DUOI_OK, "co": co,
                     }
             elif muc < sau and urlparse(day_du).netloc == cung_nha:
                 if day_du not in da_tham:
@@ -280,3 +328,64 @@ def kiem_tra_moi(http, ma: str = "", bao_tien_do=None) -> dict:
         tat_ca += moi
     _ghi_nguon(ds)
     return {"nguon": ds_nguon(), "file": tat_ca, "loi": loi}
+
+
+# ================================================================ nho AI loc giup
+# Do bang duoi file thi chac an nhung van lan rac: README, LICENSE, mau don,
+# file cau hinh cua trang... Nho AI san co cua app doc ten file + chu tren link
+# + tieu de trang roi noi cai nao la tai lieu that, kem goi y mot cai ten de doc.
+_NHAC_AI = (
+    "Bạn giúp lọc danh sách file tải được từ một trang web.\n"
+    "Với mỗi dòng, quyết định đó có phải TÀI LIỆU ĐỂ ĐỌC/HỌC không "
+    "(sách, giáo trình, slide bài giảng, đề thi, bài tập, tóm tắt, ghi chú, truyện, báo cáo).\n"
+    "KHÔNG phải tài liệu: README, LICENSE, CONTRIBUTING, CHANGELOG, file hướng dẫn của "
+    "chính trang web, mẫu đơn trống, file cấu hình, ảnh bìa lẻ, file cài đặt.\n"
+    "Trả về đúng mỗi dòng một kết quả, theo dạng:\n"
+    "số|có hoặc không|tên gợi ý ngắn gọn dễ đọc\n"
+    "Tên gợi ý: viết như tên một cuốn tài liệu cho người đọc.\n"
+    "  - bỏ tiền tố kỹ thuật trong tên file (lecture-slides, exam-past, notes, "
+    "summary...), bỏ gạch dưới, bỏ đuôi file;\n"
+    "  - GIỮ LẠI chi tiết phân biệt: số chương, mã đề, học kỳ, mã môn;\n"
+    "  - giữ nguyên ngôn ngữ của tài liệu, viết hoa chữ đầu.\n"
+    "Không giải thích gì thêm."
+)
+
+
+def loc_bang_ai(ds_file: list[dict], cfg_ai: dict, bao_tien_do=None) -> dict:
+    """Danh dau file nao la tai lieu that + dat ten de doc. Loi thi tra nguyen ban."""
+    from . import ai as ai_mod                       # noqa: PLC0415
+
+    if not ds_file:
+        return {"file": ds_file, "loi": ""}
+    lo, xong = 12, 0
+    loi = ""
+    for i in range(0, len(ds_file), lo):
+        phan = ds_file[i:i + lo]
+        dong = []
+        for k, f in enumerate(phan, 1):
+            dong.append(f"{k}. tên file: {f['ten']} | chữ trên link: {f.get('nhan', '')}"
+                        f" | trang: {f.get('tieu_de_trang', '')}")
+        try:
+            out = ai_mod.chat(cfg_ai, [
+                {"role": "system", "content": _NHAC_AI},
+                {"role": "user", "content": "\n".join(dong)},
+            ], temperature=0.1, max_tokens=120 * len(phan) + 300)
+        except Exception as exc:
+            loi = f"{type(exc).__name__}: {exc}"
+            break
+        for d in out.splitlines():
+            m = re.match(r"\s*(\d{1,3})\s*[.|)]\s*([^|]*)\|?\s*(.*)", d.strip())
+            if not m:
+                continue
+            k = int(m.group(1)) - 1
+            if not (0 <= k < len(phan)):
+                continue
+            tra_loi = (m.group(2) or "").strip().lower()
+            ten_moi = (m.group(3) or "").strip(" |")
+            phan[k]["ai_tai_lieu"] = not tra_loi.startswith(("khong", "không", "no"))
+            if ten_moi and 3 <= len(ten_moi) <= 120:
+                phan[k]["ai_ten"] = ten_moi
+        xong += len(phan)
+        if bao_tien_do:
+            bao_tien_do(xong, len(ds_file), "AI đang lọc")
+    return {"file": ds_file, "loi": loi}
